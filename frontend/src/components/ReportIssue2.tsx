@@ -56,25 +56,37 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
           if (data && data.address) {
             console.log("Nominatim Data:", data); // Debugging for user
 
-            // Strategy: Clean "Area, City" format
+            // Strategy: Strictly "Area Name, City Name"
             const addr = data.address;
             const parts = [];
 
-            // 1. Find Area/Sector
-            // nominatim usually puts sector/area in suburb, neighbourhood, or residential
-            const area = addr.suburb || addr.neighbourhood || addr.residential || addr.industrial || addr.village || addr.road || '';
-            if (area) parts.push(area);
+            // 1. Find Area Name (Prioritize most specific)
+            // 'neighbourhood': e.g. "Alkapuri"
+            // 'suburb': e.g. "Vadodara Rural" or Sector names
+            // 'quarter', 'borough', 'city_block': other variations
+            const area = addr.neighbourhood || addr.suburb || addr.residential || addr.quarter || addr.city_block || addr.borough || addr.road || addr.village || '';
 
-            // 2. Find City
+            if (area) {
+              parts.push(area);
+            }
+
+            // 2. Find City Name
             const city = addr.city || addr.town || addr.city_district || addr.county || '';
-            if (city && city !== area) parts.push(city); // Avoid stating "Vadodara, Vadodara"
 
-            // 3. Fallback
-            if (parts.length === 0 && data.display_name) {
-              // Fallback to first 2 parts of display name if we got nothing specific
+            // Only add city if it's different from the area we found
+            if (city && city.toLowerCase() !== area.toLowerCase()) {
+              parts.push(city);
+            }
+
+            // 3. Set Final Location
+            // If we have at least one part, we use our constructed string.
+            if (parts.length > 0) {
+              setDetectedLocation(parts.join(', '));
+            } else if (data.display_name) {
+              // Fallback: take first 2 parts of display name if we found absolutely nothing specific
               setDetectedLocation(data.display_name.split(',').slice(0, 2).join(', '));
             } else {
-              setDetectedLocation(parts.slice(0, 2).join(', ') || `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+              setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
             }
           } else {
             setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
