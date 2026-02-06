@@ -54,26 +54,30 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
           const data = await response.json();
 
           if (data && data.address) {
-            // Construct a readable address: "Road, Neighbourhood, City"
+            console.log("Nominatim Data:", data); // Debugging for user
+
+            // Strategy: Clean "Area, City" format
             const addr = data.address;
             const parts = [];
 
-            // Prioritize specific location details
-            if (addr.road) parts.push(addr.road);
-            if (addr.suburb) parts.push(addr.suburb);
-            else if (addr.neighbourhood) parts.push(addr.neighbourhood);
-            else if (addr.residential) parts.push(addr.residential);
-            else if (addr.city_district) parts.push(addr.city_district);
+            // 1. Find Area/Sector
+            // nominatim usually puts sector/area in suburb, neighbourhood, or residential
+            const area = addr.suburb || addr.neighbourhood || addr.residential || addr.industrial || addr.village || addr.road || '';
+            if (area) parts.push(area);
 
-            if (addr.city) parts.push(addr.city);
-            else if (addr.town) parts.push(addr.town);
-            else if (addr.village) parts.push(addr.village);
+            // 2. Find City
+            const city = addr.city || addr.town || addr.city_district || addr.county || '';
+            if (city && city !== area) parts.push(city); // Avoid stating "Vadodara, Vadodara"
 
-            if (parts.length > 0) {
-              setDetectedLocation(parts.join(', '));
-            } else if (data.display_name) {
-              setDetectedLocation(data.display_name.split(',').slice(0, 3).join(','));
+            // 3. Fallback
+            if (parts.length === 0 && data.display_name) {
+              // Fallback to first 2 parts of display name if we got nothing specific
+              setDetectedLocation(data.display_name.split(',').slice(0, 2).join(', '));
+            } else {
+              setDetectedLocation(parts.slice(0, 2).join(', ') || `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
             }
+          } else {
+            setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
           }
         } catch (e) {
           console.warn("Reverse geocoding failed, falling back to coords", e);
@@ -82,6 +86,14 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
       (err) => console.warn('Geolocation error:', err.message),
       { enableHighAccuracy: true, maximumAge: 60000 }
     );
+  };
+
+  const openGoogleMaps = () => {
+    if (detectedLat && detectedLng) {
+      window.open(`https://www.google.com/maps?q=${detectedLat},${detectedLng}`, '_blank');
+    } else {
+      toast.info("No location detected yet.");
+    }
   };
 
   useEffect(() => { fetchGeolocation() }, []);
@@ -209,8 +221,15 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
                   <label className="text-sm font-medium text-slate-700">Location</label>
                   <div className="relative flex items-center">
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e: any) => { setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10" />
-                    <button type="button" onClick={fetchGeolocation} className="ml-3 text-sm text-blue-600 hover:underline">Use my location</button>
+                    <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e: any) => { setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10 pr-24" />
+                    <div className="absolute right-2 top-2 flex space-x-2">
+                      {detectedLat && detectedLng && (
+                        <button type="button" onClick={openGoogleMaps} className="text-sm text-green-600 hover:text-green-700" title="Open in Google Maps">
+                          <MapPin className="h-4 w-4" /> {/* Reuse icon or use ExternalLink if imported */}
+                        </button>
+                      )}
+                      <button type="button" onClick={fetchGeolocation} className="text-sm text-blue-600 hover:underline">Locate</button>
+                    </div>
                   </div>
                 </div>
 
