@@ -61,16 +61,24 @@ async def predict(file: UploadFile = File(...)):
         with open(image_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        results = model(image_path)
+        # Run inference with lower confidence threshold to catch more issues
+        results = model(image_path, conf=0.15)
 
         detections = []
+        print(f"DEBUG: Processing image {file_id}.jpg")
         for r in results:
             for box in r.boxes:
+                class_name = model.names[int(box.cls)]
+                confidence = float(box.conf)
+                print(f"DEBUG: Found {class_name} ({confidence:.2f})")
                 detections.append({
-                    "class": model.names[int(box.cls)],
-                    "confidence": float(box.conf),
+                    "class": class_name,
+                    "confidence": confidence,
                     "bbox": box.xyxy[0].tolist()
                 })
+        
+        if not detections:
+            print("DEBUG: No detections found.")
 
         # Clean up processed file
         if os.path.exists(image_path):
