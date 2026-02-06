@@ -14,6 +14,7 @@ origins = [
     "http://localhost:5173",  # Local development
     "http://localhost:3000",  # Local development
     "https://citypulse.vercel.app", # Example Vercel domain
+    "https://city-pulse-eta.vercel.app", # User's specific Vercel domain
     "*" # Temporarily allow all for easy setup, restrict later if needed
 ]
 
@@ -53,26 +54,35 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    file_id = str(uuid.uuid4())
-    image_path = f"{UPLOAD_DIR}/{file_id}.jpg"
+    try:
+        file_id = str(uuid.uuid4())
+        image_path = f"{UPLOAD_DIR}/{file_id}.jpg"
 
-    with open(image_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        with open(image_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    results = model(image_path)
+        results = model(image_path)
 
-    detections = []
-    for r in results:
-        for box in r.boxes:
-            detections.append({
-                "class": model.names[int(box.cls)],
-                "confidence": float(box.conf),
-                "bbox": box.xyxy[0].tolist()
-            })
+        detections = []
+        for r in results:
+            for box in r.boxes:
+                detections.append({
+                    "class": model.names[int(box.cls)],
+                    "confidence": float(box.conf),
+                    "bbox": box.xyxy[0].tolist()
+                })
 
-    return {
-        "detections": detections
-    }
+        # Clean up processed file
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+        return {
+            "detections": detections
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "details": traceback.format_exc()}
 
 @app.get("/")
 def health():
