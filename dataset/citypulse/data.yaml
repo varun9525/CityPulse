@@ -1,0 +1,10 @@
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 4
+names:
+  - garbage
+  - pothole
+  - streetlight
+  - water_leak

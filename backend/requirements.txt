@@ -1,0 +1,12 @@
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+pillow==10.2.0
+
+# PyTorch CPU only (crucial for Render free tier slug size limits)
+# Finds the CPU version automatically from the PyPI index if available,
+# or relies on the --find-links in the build command if needed.
+# For standard pip on linux/render, this usually grabs the right wheel or we specify the index.
+torch==2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.17.0+cpu --index-url https://download.pytorch.org/whl/cpu
+ultralytics==8.1.19
