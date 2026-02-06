@@ -72,10 +72,24 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     predictImage(file)
       .then((res:any)=>{
         const dets = res?.detections||[];
-        if (dets.length>0) { dets.sort((a:any,b:any)=> (b.confidence||0)-(a.confidence||0)); const top=dets[0]; setDetectedType(top.class||''); setDetectedConfidence(typeof top.confidence==='number'?Math.round(top.confidence*100):null); }
-        else simulateAIAnalysis();
+        if (dets.length>0) { 
+          dets.sort((a:any,b:any)=> (b.confidence||0)-(a.confidence||0)); 
+          const top=dets[0]; 
+          setDetectedType(top.class||''); 
+          setDetectedConfidence(typeof top.confidence==='number'?Math.round(top.confidence*100):null); 
+        } else {
+             // No detections - do NOT simulate. Let user enter manually.
+             setDetectedType('');
+             setDetectedConfidence(null);
+             toast.info("AI couldn't identify the issue. Please select the type manually.");
+        }
       })
-      .catch((err)=>{ console.error(err); simulateAIAnalysis(); })
+      .catch((err)=>{ 
+          console.error(err); 
+          setDetectedType('');
+          setDetectedConfidence(null);
+          toast.error("AI analysis failed. Please fill details manually.");
+      })
       .finally(()=>{ setIsAnalyzing(false); setAnalysisComplete(true); });
   };
 
