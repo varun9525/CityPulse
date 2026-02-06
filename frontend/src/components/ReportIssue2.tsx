@@ -38,12 +38,46 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
   const fetchGeolocation = () => {
     if (!navigator?.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setDetectedLat(lat);
         setDetectedLng(lng);
+        // Default to coordinates initially
         setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+
+        try {
+          // Reverse geocoding using OpenStreetMap Nominatim API (Free, no key required)
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
+            headers: { 'User-Agent': 'CityPulse-App/1.0' }
+          });
+          const data = await response.json();
+
+          if (data && data.address) {
+            // Construct a readable address: "Road, Neighbourhood, City"
+            const addr = data.address;
+            const parts = [];
+
+            // Prioritize specific location details
+            if (addr.road) parts.push(addr.road);
+            if (addr.suburb) parts.push(addr.suburb);
+            else if (addr.neighbourhood) parts.push(addr.neighbourhood);
+            else if (addr.residential) parts.push(addr.residential);
+            else if (addr.city_district) parts.push(addr.city_district);
+
+            if (addr.city) parts.push(addr.city);
+            else if (addr.town) parts.push(addr.town);
+            else if (addr.village) parts.push(addr.village);
+
+            if (parts.length > 0) {
+              setDetectedLocation(parts.join(', '));
+            } else if (data.display_name) {
+              setDetectedLocation(data.display_name.split(',').slice(0, 3).join(','));
+            }
+          }
+        } catch (e) {
+          console.warn("Reverse geocoding failed, falling back to coords", e);
+        }
       },
       (err) => console.warn('Geolocation error:', err.message),
       { enableHighAccuracy: true, maximumAge: 60000 }
@@ -56,8 +90,8 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     setIsAnalyzing(true); setAnalysisComplete(false);
     setTimeout(() => {
       setIsAnalyzing(false); setAnalysisComplete(true);
-      const types = ['Pothole / Road Damage','Illegal Dumping','Broken Street Light','Traffic Signal Fault'];
-      setDetectedType(types[Math.floor(Math.random()*types.length)]);
+      const types = ['Pothole / Road Damage', 'Illegal Dumping', 'Broken Street Light', 'Traffic Signal Fault'];
+      setDetectedType(types[Math.floor(Math.random() * types.length)]);
       setDetectedConfidence(94);
       if (!detectedLocation) setDetectedLocation('Unknown location (please provide)');
     }, 1200);
@@ -70,48 +104,48 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
 
     setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null);
     predictImage(file)
-      .then((res:any)=>{
-        const dets = res?.detections||[];
-        if (dets.length>0) { 
-          dets.sort((a:any,b:any)=> (b.confidence||0)-(a.confidence||0)); 
-          const top=dets[0]; 
-          setDetectedType(top.class||''); 
-          setDetectedConfidence(typeof top.confidence==='number'?Math.round(top.confidence*100):null); 
+      .then((res: any) => {
+        const dets = res?.detections || [];
+        if (dets.length > 0) {
+          dets.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0));
+          const top = dets[0];
+          setDetectedType(top.class || '');
+          setDetectedConfidence(typeof top.confidence === 'number' ? Math.round(top.confidence * 100) : null);
         } else {
-             // No detections - do NOT simulate. Let user enter manually.
-             setDetectedType('');
-             setDetectedConfidence(null);
-             toast.info("AI couldn't identify the issue. Please select the type manually.");
-        }
-      })
-      .catch((err)=>{ 
-          console.error(err); 
+          // No detections - do NOT simulate. Let user enter manually.
           setDetectedType('');
           setDetectedConfidence(null);
-          toast.error("AI analysis failed. Please fill details manually.");
+          toast.info("AI couldn't identify the issue. Please select the type manually.");
+        }
       })
-      .finally(()=>{ setIsAnalyzing(false); setAnalysisComplete(true); });
+      .catch((err) => {
+        console.error(err);
+        setDetectedType('');
+        setDetectedConfidence(null);
+        toast.error("AI analysis failed. Please fill details manually.");
+      })
+      .finally(() => { setIsAnalyzing(false); setAnalysisComplete(true); });
   };
 
-  const handleSubmit = async (e:React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); if (!selectedFile) return; setIsSubmitting(true);
     try {
       const formData = new FormData(); formData.append('image', selectedFile); formData.append('type', detectedType); formData.append('location', detectedLocation);
-      if (detectedLat!==null && detectedLng!==null){ formData.append('lat', detectedLat.toString()); formData.append('lng', detectedLng.toString()); }
-      const priority = getPriorityForType(detectedType); formData.append('priority', priority); const risk = priority==='High'?'Critical':priority==='Moderate'?'Moderate':'Low'; formData.append('risk', risk);
+      if (detectedLat !== null && detectedLng !== null) { formData.append('lat', detectedLat.toString()); formData.append('lng', detectedLng.toString()); }
+      const priority = getPriorityForType(detectedType); formData.append('priority', priority); const risk = priority === 'High' ? 'Critical' : priority === 'Moderate' ? 'Moderate' : 'Low'; formData.append('risk', risk);
       formData.append('description', description);
       let token = null; let session = null;
-      try{ const { data, error } = await supabase.auth.refreshSession(); if (!error && data.session){ session = data.session; token = data.session.access_token; } else { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; } }
-      catch(e){ const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; }
+      try { const { data, error } = await supabase.auth.refreshSession(); if (!error && data.session) { session = data.session; token = data.session.access_token; } else { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; } }
+      catch (e) { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; }
       if (session?.user?.id) formData.append('userId', session.user.id);
       const result = await api.submitReport(formData, token);
       toast.success(`Report Submitted: #${result.id}`, { description: 'Thank you for your contribution to the city.', duration: 5000 });
       onSuccess();
-    }catch(err){ toast.error('Failed to submit report. Please try again.'); console.error(err); }
-    finally{ setIsSubmitting(false); }
+    } catch (err) { toast.error('Failed to submit report. Please try again.'); console.error(err); }
+    finally { setIsSubmitting(false); }
   };
 
-  const allowEditType = analysisComplete && (!detectedType || (detectedConfidence!==null && detectedConfidence<CONF_THRESHOLD));
+  const allowEditType = analysisComplete && (!detectedType || (detectedConfidence !== null && detectedConfidence < CONF_THRESHOLD));
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
@@ -128,9 +162,9 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
                 {selectedImage ? (
                   <>
                     <img src={selectedImage} alt="Selected issue" className="absolute inset-0 w-full h-full object-cover" />
-                    <button onClick={()=>{ setSelectedImage(null); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null); }} className="absolute top-2 right-2 bg-white/80 p-1 rounded-full text-slate-700 hover:text-red-500"><X className="h-5 w-5"/></button>
+                    <button onClick={() => { setSelectedImage(null); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null); }} className="absolute top-2 right-2 bg-white/80 p-1 rounded-full text-slate-700 hover:text-red-500"><X className="h-5 w-5" /></button>
                   </>
-                ):(
+                ) : (
                   <label className="cursor-pointer flex flex-col items-center w-full h-full justify-center">
                     <Camera className="h-12 w-12 text-blue-500 mb-4" />
                     <span className="text-sm font-medium text-slate-700">Tap to take photo</span>
@@ -154,20 +188,20 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 min-h-[100px] flex items-center justify-center">
                   {!selectedImage ? (
-                    <span className="text-slate-500 text-sm flex items-center"><Upload className="h-4 w-4 mr-2"/> Upload an image to start analysis</span>
+                    <span className="text-slate-500 text-sm flex items-center"><Upload className="h-4 w-4 mr-2" /> Upload an image to start analysis</span>
                   ) : isAnalyzing ? (
                     <div className="flex flex-col items-center text-blue-600"><Loader2 className="h-6 w-6 animate-spin mb-2" /><span className="text-sm font-medium">Analyzing image...</span></div>
                   ) : analysisComplete ? (
                     <div className="w-full">
-                      <div className="flex items-center text-emerald-600 mb-2"><CheckCircle className="h-5 w-5 mr-2"/><span className="font-semibold text-sm">Analysis Complete</span></div>
-                      <div className="grid grid-cols-1 gap-4 text-sm"><div className="bg-white p-2 rounded border border-slate-200"><span className="text-xs text-slate-500 block">Priority</span><span className="font-medium text-amber-600">{getPriorityForType(detectedType)}</span>{((detectedConfidence!==null && detectedConfidence<CONF_THRESHOLD) || !detectedType) && (<div className="text-xs text-slate-500 mt-1">Detection uncertain — you can edit the issue type below.</div>)}</div></div>
+                      <div className="flex items-center text-emerald-600 mb-2"><CheckCircle className="h-5 w-5 mr-2" /><span className="font-semibold text-sm">Analysis Complete</span></div>
+                      <div className="grid grid-cols-1 gap-4 text-sm"><div className="bg-white p-2 rounded border border-slate-200"><span className="text-xs text-slate-500 block">Priority</span><span className="font-medium text-amber-600">{getPriorityForType(detectedType)}</span>{((detectedConfidence !== null && detectedConfidence < CONF_THRESHOLD) || !detectedType) && (<div className="text-xs text-slate-500 mt-1">Detection uncertain — you can edit the issue type below.</div>)}</div></div>
                     </div>
-                  ):null}
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Issue Type</label>
-                  <Input value={detectedType} placeholder="Waiting for image..." disabled={!allowEditType && !!detectedType} onChange={(e:any)=>setDetectedType(e.target.value)} className="bg-slate-100 font-medium text-slate-800" />
+                  <Input value={detectedType} placeholder="Waiting for image..." disabled={!allowEditType && !!detectedType} onChange={(e: any) => setDetectedType(e.target.value)} className="bg-slate-100 font-medium text-slate-800" />
                   {allowEditType ? (<p className="text-xs text-slate-500">Type not recognized or low confidence — please enter the issue.</p>) : (analysisComplete && <p className="text-xs text-emerald-600">✓ Automatically detected</p>)}
                 </div>
 
@@ -175,14 +209,14 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
                   <label className="text-sm font-medium text-slate-700">Location</label>
                   <div className="relative flex items-center">
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e:any)=>{ setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10" />
+                    <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e: any) => { setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10" />
                     <button type="button" onClick={fetchGeolocation} className="ml-3 text-sm text-blue-600 hover:underline">Use my location</button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Additional Description (Optional)</label>
-                  <textarea className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]" placeholder="Any extra details that might help the team..." value={description} onChange={(e)=>setDescription(e.target.value)} />
+                  <textarea className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]" placeholder="Any extra details that might help the team..." value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
 
                 <div className="pt-4">
