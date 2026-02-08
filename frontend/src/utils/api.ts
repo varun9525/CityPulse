@@ -1,112 +1,140 @@
-import { projectId, publicAnonKey } from './supabase/info'
+import { supabase } from './supabaseClient';
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-2aa51ca7`
-
-// Backend URL used for ML predictions. Can be overridden with Vite env var `VITE_BACKEND_URL`.
-const BACKEND_URL = (import.meta && import.meta.env && import.meta.env.VITE_BACKEND_URL) || 'http://localhost:8000'
+// Backend URL used ONLY for ML predictions.
+const BACKEND_URL = 'http://localhost:8000';
 
 export const api = {
-  submitReport: async (formData: FormData, token?: string) => {
-    // If no token provided, use anon key. 
-    // If token IS provided, use it.
-    const effectiveToken = token || publicAnonKey;
-    
-    const headers: HeadersInit = {
-       'Authorization': `Bearer ${effectiveToken}`
-    };
-    
+  submitReport: async (formData: FormData): Promise<any> => {
     try {
-      const response = await fetch(`${BASE_URL}/reports`, {
-        method: 'POST',
-        headers,
-        body: formData
-      })
-      
-      if (!response.ok) {
-         // Auto-retry with Anon Key if 401 (Invalid JWT) and we were using a user token
-         if (response.status === 401 && token && token !== publicAnonKey) {
-             console.log('User token invalid (401). Automatically retrying with public access...');
-             // Recursive call without token -> will use publicAnonKey
-             return api.submitReport(formData, undefined);
-         }
+      // 1. Upload Image
+      const imageFile = formData.get('image') as File;
+      if (!imageFile) throw new Error("No image provided");
 
-         let errorMessage = `Failed to submit report (${response.status})`;
-         try {
-            const text = await response.text();
-            try {
-               const json = JSON.parse(text);
-               if (json.error) errorMessage = json.error;
-               else errorMessage += `: ${text}`;
-            } catch {
-               errorMessage += `: ${text.slice(0, 200)}`;
-            }
-         } catch (e) {
-            // ignore
-         }
-         console.error('Submit report failed:', errorMessage);
-         throw new Error(errorMessage);
-      }
-      return response.json()
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('issues')
+        .upload(filePath, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('issues')
+        .getPublicUrl(filePath);
+
+      // 3. Insert Record
+      const { data, error } = await supabase
+        .from('issues')
+        .insert([
+          {
+            type: formData.get('type'),
+            description: formData.get('description'),
+            lat: parseFloat(formData.get('lat') as string) || 0,
+            lng: parseFloat(formData.get('lng') as string) || 0,
+            location: formData.get('location'),
+            priority: formData.get('priority'),
+            risk: formData.get('risk'),
+            image_url: publicUrl,
+            user_id: formData.get('userId') || null, // Optional if we attach user
+            status: 'PENDING'
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     } catch (err: any) {
-      console.error('Network or Parse Error:', err);
+      console.error('Submit report failed:', err);
       throw new Error(err.message || 'Network error occurred');
     }
   },
 
   getReports: async (userId?: string) => {
-    let url = `${BASE_URL}/reports`;
+    let query = supabase
+      .from('issues')
+      .select('*')
+      .order('created_at', { ascending: false });
+
     if (userId) {
-       url += `?userId=${userId}`;
+      query = query.eq('user_id', userId);
     }
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${publicAnonKey}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to fetch reports')
-    return response.json()
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data;
   },
 
   getReport: async (id: string) => {
-    const response = await fetch(`${BASE_URL}/reports/${id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${publicAnonKey}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to fetch report')
-    return response.json()
+    const { data, error } = await supabase
+      .from('issues')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
   updateStatus: async (id: string, status: string) => {
-    const response = await fetch(`${BASE_URL}/reports/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status })
-    })
-    if (!response.ok) throw new Error('Failed to update status')
-    return response.json()
+    const { data, error } = await supabase
+      .from('issues')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
-  
-  signupAdmin: async (email, password, role) => {
-    const response = await fetch(`${BASE_URL}/signup`, {
-       method: 'POST',
-       headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json'
-       },
-       body: JSON.stringify({ email, password, role })
-    })
-    if (!response.ok) {
-       const err = await response.json()
-       throw new Error(err.error || 'Failed to signup')
-    }
-    return response.json()
-  }
+
+  resolveIssue: async (id: string, file: File) => {
+    // 1. Upload Resolved Image
+    const fileExt = file.name.split('.').pop();
+    const fileName = `resolved_${id}_${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('issues')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('issues')
+      .getPublicUrl(filePath);
+
+    // 2. Update Issue
+    const { data, error } = await supabase
+      .from('issues')
+      .update({
+        status: 'RESOLVED',
+        resolved_image_url: publicUrl
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  approveIssue: async (id: string) => {
+    const { data, error } = await supabase
+      .from('issues')
+      .update({ status: 'APPROVED' })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Auth is handled directly by supabase.auth in components
 }
 
 // Call the local backend prediction endpoint. Expects a multipart form with the file field named `file`.

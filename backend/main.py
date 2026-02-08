@@ -7,17 +7,12 @@ import uuid
 
 app = FastAPI()
 
-# Allow frontend to talk to backend
-# Allow frontend to talk to backend
-# In production, you might want to restrict this to your specific Vercel domain
-origins = [
-    "http://localhost:5173",  # Local development
-    "http://localhost:3000",  # Local development
-    "https://citypulse.vercel.app", # Example Vercel domain
-    "https://city-pulse-eta.vercel.app", # User's specific Vercel domain
-    "*" # Temporarily allow all for easy setup, restrict later if needed
-]
+# Mount uploads for static access (only for temp usage if needed, but mostly we use Supabase Storage now)
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# CORS Setup
+origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -26,72 +21,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load trained model
-# Load trained model
-# Check if model exists in current directory or backend directory
+# Load YOLO Model
 MODEL_FILENAME = os.getenv("MODEL_PATH", "best.pt")
-possible_paths = [
-    MODEL_FILENAME,
-    os.path.join("backend", MODEL_FILENAME),
-    os.path.join(os.getcwd(), MODEL_FILENAME)
-]
-
-FINAL_MODEL_PATH = None
-for path in possible_paths:
-    if os.path.exists(path):
-        FINAL_MODEL_PATH = path
-        break
-
-if not FINAL_MODEL_PATH:
-    # Fallback/Error if not found
-    print(f"Warning: Model {MODEL_FILENAME} not found. Checking current dir: {os.getcwd()}")
-    FINAL_MODEL_PATH = MODEL_FILENAME # Let Ultralytics try to download or fail
-
-model = YOLO(FINAL_MODEL_PATH)
-
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+possible_paths = [MODEL_FILENAME, os.path.join("backend", MODEL_FILENAME), os.path.join(os.getcwd(), MODEL_FILENAME)]
+FINAL_MODEL_PATH = next((p for p in possible_paths if os.path.exists(p)), MODEL_FILENAME)
+try:
+    model = YOLO(FINAL_MODEL_PATH)
+    print(f"Loaded model from {FINAL_MODEL_PATH}")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    model = None
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    try:
-        file_id = str(uuid.uuid4())
-        image_path = f"{UPLOAD_DIR}/{file_id}.jpg"
+    if not model:
+         return {"error": "Model not loaded"}
 
+    try:
+        # Save temp file
+        file_id = str(uuid.uuid4())
+        image_path = f"{UPLOAD_DIR}/temp_{file_id}.jpg"
         with open(image_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Run inference with lower confidence threshold to catch more issues
         results = model(image_path, conf=0.15)
-
         detections = []
-        print(f"DEBUG: Processing image {file_id}.jpg")
         for r in results:
             for box in r.boxes:
                 class_name = model.names[int(box.cls)]
-                confidence = float(box.conf)
-                print(f"DEBUG: Found {class_name} ({confidence:.2f})")
                 detections.append({
                     "class": class_name,
-                    "confidence": confidence,
+                    "confidence": float(box.conf),
                     "bbox": box.xyxy[0].tolist()
                 })
         
-        if not detections:
-            print("DEBUG: No detections found.")
-
-        # Clean up processed file
+        # Cleanup temp
         if os.path.exists(image_path):
             os.remove(image_path)
-
-        return {
-            "detections": detections
-        }
+            
+        return {"detections": detections}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e), "details": traceback.format_exc()}
+        return {"error": str(e)}
 
 @app.get("/")
 def health():
-    return {"status": "CityPulse AI backend running"}
+    return {"status": "CityPulse AI backend running (Prediction Only)"}

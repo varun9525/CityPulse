@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { supabase } from '@/utils/supabaseClient';
-import { api } from '@/utils/api';
 import { toast } from 'sonner';
 import { Loader2, ChevronDown } from 'lucide-react';
 
@@ -22,16 +21,17 @@ export function Login({ onLoginSuccess }: LoginProps) {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
-      
+
       toast.success('Welcome back!');
       onLoginSuccess();
     } catch (error: any) {
+      console.error(error);
       toast.error(error.message || 'Failed to login');
     } finally {
       setIsLoading(false);
@@ -42,20 +42,25 @@ export function Login({ onLoginSuccess }: LoginProps) {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Call our server endpoint which assigns role based on email domain and selection
-      await api.signupAdmin(email, password, role);
-      
-      // Auto login after signup
-      const { error } = await supabase.auth.signInWithPassword({
+      // Sign up with Supabase
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            role: role // metadata
+          }
+        }
       });
-      
+
       if (error) throw error;
 
-      toast.success('Account created successfully!');
-      onLoginSuccess();
+      toast.success('Check your email for the confirmation link!');
+      // Assuming auto-login might not happen if email needs confirmation, 
+      // but if development mode, it might.
+      // onLoginSuccess(); // Usually wait for confirmation or manual login
     } catch (error: any) {
+      console.error(error);
       toast.error(error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
@@ -75,7 +80,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">
                 {isSignUp ? 'I am a...' : 'Login as...'}
@@ -92,7 +97,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                 <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-slate-500 pointer-events-none" />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Email</label>
               <Input
@@ -118,20 +123,20 @@ export function Login({ onLoginSuccess }: LoginProps) {
                 required
               />
             </div>
-            
+
             <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
-            
+
             <div className="text-center mt-4">
-               <button 
-                 type="button"
-                 onClick={() => setIsSignUp(!isSignUp)}
-                 className="text-sm text-blue-600 hover:underline"
-               >
-                 {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-               </button>
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+              </button>
             </div>
           </form>
         </CardContent>

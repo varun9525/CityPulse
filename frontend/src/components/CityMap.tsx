@@ -24,12 +24,12 @@ export function CityMap() {
     fetchReports();
   }, []);
 
-  const filteredReports = activeFilter === 'all' 
-    ? reports 
-    : reports.filter(r => r.type.toLowerCase().includes(activeFilter));
+  const filteredReports = activeFilter === 'all'
+    ? reports
+    : reports.filter(r => r.type?.toLowerCase().includes(activeFilter));
 
   const getRiskType = (risk: string) => {
-     return risk.toLowerCase() as 'critical' | 'moderate' | 'low';
+    return (risk || '').toLowerCase() as 'critical' | 'moderate' | 'low';
   };
 
   return (
@@ -41,7 +41,7 @@ export function CityMap() {
             <Layers className="mr-2 h-5 w-5 text-blue-600" /> Map Layers
           </h2>
         </div>
-        
+
         <div className="p-4 space-y-6 flex-grow overflow-y-auto">
           <div>
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Issue Type</h3>
@@ -56,16 +56,14 @@ export function CityMap() {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
-                  className={`flex justify-between items-center w-full px-3 py-2 rounded-md text-sm transition-colors ${
-                    activeFilter === filter.id 
-                      ? 'bg-blue-50 text-blue-700 font-medium' 
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
+                  className={`flex justify-between items-center w-full px-3 py-2 rounded-md text-sm transition-colors ${activeFilter === filter.id
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                 >
                   <span>{filter.label}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    activeFilter === filter.id ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-500'
-                  }`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${activeFilter === filter.id ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-500'
+                    }`}>
                     {filter.count}
                   </span>
                 </button>
@@ -91,8 +89,8 @@ export function CityMap() {
 
         <div className="p-4 border-t border-slate-100 bg-slate-50">
           <Button className="w-full bg-slate-900 text-white" onClick={() => window.location.reload()}>
-             {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-             Refresh Data
+            {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+            Refresh Data
           </Button>
         </div>
       </div>
@@ -100,38 +98,38 @@ export function CityMap() {
       {/* Map Area */}
       <div className="flex-grow relative bg-slate-200">
         {/* Mock Map Background */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center opacity-80"
-          style={{ 
+          style={{
             backgroundImage: 'url(https://images.unsplash.com/photo-1542382257-80dedb725088?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwbWFwJTIwdmlldyUyMHRvcCUyMGRvd258ZW58MXx8fHwxNzY5ODQyNzAwfDA&ixlib=rb-4.1.0&q=80&w=1600)',
             filter: 'grayscale(30%) contrast(110%) brightness(110%)'
           }}
         />
-        
+
         {/* Map Overlay Gradient */}
         <div className="absolute inset-0 bg-blue-900/10 pointer-events-none"></div>
 
         {/* Real Data Markers */}
         {filteredReports.map((report) => (
-           <MapMarker 
-             key={report.id}
-             // Normalize lat/lng to roughly fit on screen for demo purposes since we don't have a real map
-             // We use the stored coords if they exist, or random if not (should exist)
-             x={50 + (report.coordinates?.lng || 0) * 1000 + (Math.random() * 40 - 20)} 
-             y={50 + (report.coordinates?.lat || 0) * 1000 + (Math.random() * 40 - 20)}
-             type={getRiskType(report.riskLevel)} 
-             label={report.type} 
-           />
+          <MapMarker
+            key={report.id}
+            // Normalize lat/lng to roughly fit on screen for demo purposes since we don't have a real map
+            // We use the stored coords if they exist, or random if not (should exist)
+            x={50 + (report.lng || 0) * 1000 + (Math.random() * 40 - 20)}
+            y={50 + (report.lat || 0) * 1000 + (Math.random() * 40 - 20)}
+            type={getRiskType(report.risk)}
+            label={report.type}
+          />
         ))}
 
         {/* Floating Controls */}
         <div className="absolute top-6 right-6 flex flex-col gap-2">
-           <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
-             <span className="text-xl font-bold text-slate-700">+</span>
-           </Button>
-           <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
-             <span className="text-xl font-bold text-slate-700">-</span>
-           </Button>
+          <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
+            <span className="text-xl font-bold text-slate-700">+</span>
+          </Button>
+          <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
+            <span className="text-xl font-bold text-slate-700">-</span>
+          </Button>
         </div>
       </div>
     </div>
@@ -146,7 +144,7 @@ function MapMarker({ x, y, type, label }: { x: number, y: number, type: 'critica
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="absolute group cursor-pointer"
       style={{ left: `${x}%`, top: `${y}%` }}
       initial={{ scale: 0 }}
@@ -157,7 +155,7 @@ function MapMarker({ x, y, type, label }: { x: number, y: number, type: 'critica
       <div className={`w-4 h-4 rounded-full ${colors[type]} ring-4 ring-opacity-50 shadow-lg relative`}>
         <div className={`absolute -inset-2 rounded-full ${colors[type]} opacity-20 animate-ping`}></div>
       </div>
-      
+
       {/* Tooltip */}
       <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
         <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded shadow-lg flex items-center">
