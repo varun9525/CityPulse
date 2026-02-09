@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input-field';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { supabase } from '@/utils/supabaseClient';
 import { toast } from 'sonner';
@@ -34,7 +34,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
       if (userRole !== role) {
         // If roles don't match, sign out immediately
         await supabase.auth.signOut();
-        throw new Error(`Invalid role. This account is registered as '${userRole}', but you are trying to login as '${role}'.`);
+        throw new Error(`Invalid role.This account is registered as '${userRole}', but you are trying to login as '${role}'.`);
       }
 
       toast.success('Welcome back!');

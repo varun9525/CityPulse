@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input-field';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Upload, X, MapPin, Loader2, CheckCircle, Camera } from 'lucide-react';
 import { api, predictImage } from '@/utils/api';

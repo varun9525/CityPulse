@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input-field';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Search, CheckCircle2, Clock, MapPin, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
