@@ -57,20 +57,28 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = () => {
-    if (isAdmin()) {
-      handleNavigate('admin');
+  const handleLoginSuccess = async () => {
+    // Manually refresh session to ensure we have the latest state immediately
+    const { data: { session: newSession } } = await supabase.auth.getSession();
+    setSession(newSession);
+
+    if (isAdmin(newSession)) {
+      setCurrentPage('admin');
     } else {
-      handleNavigate('my-reports');
+      // Check if we came from a specific flow? For now default to report or my-reports
+      // User likely wanted to "Report Issue", so let's send them to report if that was the intent, 
+      // but 'my-reports' is a safe default dashboard.
+      // Let's stick to 'my-reports' as per original logic, but bypass handleNavigate check.
+      setCurrentPage('my-reports');
     }
   };
 
-  const isAdmin = () => {
-    if (!session?.user) return false;
-    const email = session.user.email || '';
+  const isAdmin = (currentSession = session) => {
+    if (!currentSession?.user) return false;
+    const email = currentSession.user.email || '';
     // Role check from metadata or email domain for demo
     return (
-      session.user.user_metadata?.role === 'admin'
+      currentSession.user.user_metadata?.role === 'admin'
     );
   };
 

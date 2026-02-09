@@ -22,12 +22,20 @@ export function Login({ onLoginSuccess }: LoginProps) {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Role Verification
+      const userRole = data.session?.user?.user_metadata?.role || 'citizen'; // Default to citizen if undefined
+      if (userRole !== role) {
+        // If roles don't match, sign out immediately
+        await supabase.auth.signOut();
+        throw new Error(`Invalid role. This account is registered as '${userRole}', but you are trying to login as '${role}'.`);
+      }
 
       toast.success('Welcome back!');
       onLoginSuccess();
