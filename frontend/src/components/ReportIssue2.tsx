@@ -131,13 +131,8 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     const reader = new FileReader(); reader.onload = () => setSelectedImage(reader.result as string); reader.readAsDataURL(file);
 
     setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedPriority(''); setDetectedConfidence(null);
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out. Please check if backend is running.')), 15000);
-    });
-
-    // Race the prediction against the timeout
-    Promise.race([predictImage(file), timeoutPromise])
+    // Call the prediction API directly without timeout
+    predictImage(file)
       .then((res: any) => {
         const dets = res?.detections || [];
         if (dets.length > 0) {

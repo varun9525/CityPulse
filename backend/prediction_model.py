@@ -71,12 +71,12 @@ class RiskPredictor:
         
         return closest_area
 
-    def generate_synthetic_data(self, num_points=500):
+    def generate_synthetic_data(self, num_points=2000):
         """
         Generates synthetic historical data for Vadodara.
         """
         data = []
-        start_date = datetime.now() - timedelta(days=180) # 6 months history
+        start_date = datetime.now() - timedelta(days=365) # 1 year history
 
         for _ in range(num_points):
             # Pick a center based on weights (focus more on high risk areas)
@@ -87,7 +87,7 @@ class RiskPredictor:
             lng = area["lng"] + np.random.normal(0, 0.003)
             
             # Random date
-            days_offset = random.randint(0, 180)
+            days_offset = random.randint(0, 365)
             date = start_date + timedelta(days=days_offset)
             
             # Get Weather features
@@ -121,6 +121,7 @@ class RiskPredictor:
                 "rain_sum": rain,
                 "temp_max": temp,
                 "priority_score": priority_score,
+                "issue_type": issue_type, # Keep for analysis
                 "created_at": date
             })
             
@@ -154,12 +155,14 @@ class RiskPredictor:
                     "rain_sum": weather["rain"],
                     "temp_max": weather["temp"],
                     "priority_score": p_score,
+                    "issue_type": issue.type if hasattr(issue, 'type') else "Unknown",
                     "created_at": created_at
                 })
             
             if real_data:
                 df_real = pd.DataFrame(real_data)
                 df = pd.concat([df, df_real], ignore_index=True)
+                print(f"Incorporated {len(df_real)} real data points.")
 
         # 3. Train
         X = df[["lat", "lng", "day_of_year", "month", "rain_sum", "temp_max"]]
@@ -167,12 +170,12 @@ class RiskPredictor:
         
         self.model.fit(X, y)
         self.is_trained = True
-        print(f"Model trained on {len(df)} records (Vadodara Region).")
         return df
 
-    def predict_risk_zones(self):
+    def predict_risk_zones(self, delay_days=0):
         """
         Generates risk heatmap for Vadodara areas next month.
+        Supports What-If simulation (delay_days).
         """
         if not self.is_trained:
             self.train()
@@ -181,30 +184,83 @@ class RiskPredictor:
         future_day = future_date.timetuple().tm_yday
         future_month = future_date.month
         
-        # Fetch Forecast Weather (Simplified: Random "Avg" for next month)
-        # Using 30-day forecast logic or historical average for that month
-        avg_rain = 0.0 if future_month not in [6,7,8,9] else 10.0
+        # Forecast Weather
+        avg_rain = 0.0 if future_month not in [6,7,8,9] else 15.0
         avg_temp = 30.0
 
         risk_zones = []
         
-        # Evaluate risk for each defined area center + some grid points
         for area in self.areas:
-            # Predict
+            # Predict Base Risk
             risk = self.model.predict([[area["lat"], area["lng"], future_day, future_month, avg_rain, avg_temp]])[0]
-            
             risk_score = round(risk, 2)
             
-            if risk_score > 4.0: # Lower threshold to show more zones
+            # --- What-If Simulation Logic ---
+            projected_cost = 0
+            if delay_days > 0:
+                # Delay increases risk exponentially
+                risk_increase = (delay_days * 0.5) + (risk_score * 0.1 * delay_days)
+                risk_score = round(min(10, risk_score + risk_increase), 2)
+                
+                # Cost Simulation (Base cost + Escalation)
+                base_cost = 5000 * risk_score # Dummy currency unit
+                escalation = base_cost * (0.15 * delay_days) # 15% increase per day
+                projected_cost = int(base_cost + escalation)
+
+            # --- Derived Insights (Simulated for Demo) ---
+            # 1. Growth % (Recent surge)
+            growth_pct = random.randint(5, 65) if risk_score > 6 else random.randint(-10, 15)
+            
+            # 2. Dominant Issue
+            issues_pool = ["Garbage", "Pothole", "Waterlog", "Streetlight"]
+            dominant_issue = random.choice(issues_pool)
+            if avg_rain > 10: dominant_issue = "Waterlog"
+
+            # 3. Unresolved Count
+            unresolved = int(risk_score * random.uniform(2, 5))
+
+            if risk_score > 4.0:
+                # Generate Reasons
+                reasons = []
+                if growth_pct > 20: reasons.append(f"Complaint volume surged by {growth_pct}% recently")
+                if unresolved > 10: reasons.append(f"{unresolved} issues currently pending resolution")
+                if avg_rain > 10: reasons.append("Heavy rain forecast aggravates existing damage")
+                if delay_days > 0: reasons.append(f"Delayed action has escalated risk by {(delay_days * 0.5):.1f} pts")
+
+                # Generate Suggestions
+                suggestions = []
+                if dominant_issue == "Garbage": suggestions.append("Dispatch sanitation squad immediately")
+                elif dominant_issue == "Pothole": suggestions.append("Schedule emergency patch work")
+                elif dominant_issue == "Waterlog": suggestions.append("Clear drains and deploy pumps")
+                
+                if delay_days > 3: suggestions.append("⚠️ ESCALATION: Requires senior approval")
+
                 risk_zones.append({
                     "lat": area["lat"],
                     "lng": area["lng"],
                     "area_name": area["name"],
                     "risk_score": risk_score,
+                    "reason": ". ".join(reasons) if reasons else "High density of recurring issues",
+                    "growth_pct": growth_pct,
+                    "dominant_issue": dominant_issue,
+                    "unresolved_count": unresolved,
+                    "projected_cost": projected_cost,
+                    "suggestion": ". ".join(suggestions),
                     "weather_forecast": "Rainy" if avg_rain > 5 else "Clear"
                 })
                     
         return sorted(risk_zones, key=lambda x: x['risk_score'], reverse=True)
+
+    def get_issue_trends(self):
+        """
+        Returns trend analysis for specific issues (simulated for Decision Support).
+        """
+        return [
+            {"name": "Garbage", "trend": "up", "value": 42, "prediction": "Expected to rise due to festival season"},
+            {"name": "Potholes", "trend": "up", "value": 18, "prediction": "Monsoon damage accelerating"},
+            {"name": "Streetlights", "trend": "down", "value": 10, "prediction": "Improvements seen after recent repairs"},
+            {"name": "Waterlogging", "trend": "stable", "value": 2, "prediction": "Stable but monitor low-lying areas"}
+        ]
 
     def forecast_trends(self):
         """

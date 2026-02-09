@@ -199,30 +199,34 @@ async def verify_resolution(file: UploadFile = File(...), issue_type: str = Form
         return {"error": str(e)}
 
 @app.get("/analytics/predict")
-async def get_predictions(db: Session = Depends(get_db)):
+async def get_predictions(delay_days: int = 0, db: Session = Depends(get_db)):
     """
     Returns AI-generated risk predictions and forecasts.
+    Supports ?delay_days=X for What-If analysis.
     """
     try:
-        print("Analytics endpoint hit")
+        print(f"Analytics endpoint hit (Delay={delay_days} days)")
         # 1. Fetch real issues to augment synthetic data
         real_issues = db.query(models.Issue).all()
-        print(f"Fetched {len(real_issues)} real issues")
         
         # 2. Train/Update model
         # (In production, this would be a background job, not on every request)
         risk_predictor.train(real_issues)
-        print("Model trained")
         
         # 3. Get Forecast
         forecast = risk_predictor.forecast_trends()
         
-        # 4. Get Risk Zones
-        risk_zones = risk_predictor.predict_risk_zones()
+        # 4. Get Risk Zones (with Simulation)
+        risk_zones = risk_predictor.predict_risk_zones(delay_days=delay_days)
+        
+        # 5. Get Issue Trends (Decision Support)
+        trends = risk_predictor.get_issue_trends()
         
         return {
             "forecast": forecast,
             "risk_zones": risk_zones,
+            "trends": trends,
+            "simulation": {"delay_days": delay_days, "active": delay_days > 0},
             "total_analyzed": len(risk_predictor.synthetic_data)
         }
     except Exception as e:
