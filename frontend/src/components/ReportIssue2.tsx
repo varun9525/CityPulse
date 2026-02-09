@@ -17,6 +17,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
   const [analysisComplete, setAnalysisComplete] = useState(false);
 
   const [detectedType, setDetectedType] = useState('');
+  const [detectedPriority, setDetectedPriority] = useState<string>('');
   const [detectedLocation, setDetectedLocation] = useState('');
   const [detectedConfidence, setDetectedConfidence] = useState<number | null>(null);
   const [detectedLat, setDetectedLat] = useState<number | null>(null);
@@ -129,27 +130,36 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     const file = e.target.files[0]; setSelectedFile(file);
     const reader = new FileReader(); reader.onload = () => setSelectedImage(reader.result as string); reader.readAsDataURL(file);
 
-    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null);
-    predictImage(file)
+    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedPriority(''); setDetectedConfidence(null);
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timed out. Please check if backend is running.')), 15000);
+    });
+
+    // Race the prediction against the timeout
+    Promise.race([predictImage(file), timeoutPromise])
       .then((res: any) => {
         const dets = res?.detections || [];
         if (dets.length > 0) {
           dets.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0));
           const top = dets[0];
           setDetectedType(top.class || '');
+          setDetectedPriority(top.priority || getPriorityForType(top.class));
           setDetectedConfidence(typeof top.confidence === 'number' ? Math.round(top.confidence * 100) : null);
         } else {
           // No detections - do NOT simulate. Let user enter manually.
           setDetectedType('');
+          setDetectedPriority('');
           setDetectedConfidence(null);
           toast.info("AI couldn't identify the issue. Please select the type manually.");
         }
       })
       .catch((err) => {
-        console.error(err);
+        console.error("AI Analysis Error:", err);
         setDetectedType('');
+        setDetectedPriority('');
         setDetectedConfidence(null);
-        toast.error("AI analysis failed. Please fill details manually.");
+        toast.error(`Analysis failed: ${err.message || 'Unknown error'}`);
       })
       .finally(() => { setIsAnalyzing(false); setAnalysisComplete(true); });
   };

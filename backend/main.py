@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Depends
+from fastapi import FastAPI, File, UploadFile, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import models
@@ -57,30 +57,44 @@ def get_priority(class_name: str, confidence: float, bbox: list, img_width: int,
         ratio = 0.0
 
     # Base priority logic
-    priority = "Low" # Default to Low for small issues
+    priority = "Low" # Default to LoW for small issues
     
     if "pothole" in cn or "road" in cn:
+        # Potholes: dangerous mostly if large
         if ratio > 0.30:
+            priority = "Critical"
+        elif ratio > 0.15:
             priority = "High"
-        elif ratio > 0.10:
+        elif ratio > 0.02:
             priority = "Moderate"
         else:
             priority = "Low"
             
     elif "dump" in cn or "garbage" in cn:
-        if ratio > 0.70:
-            priority = "Critical"
-        elif ratio > 0.40:
+        # Garbage: unsightly but rarely immediate danger unless huge
+        if ratio > 0.40:
+            priority = "Critical" # Blocking road
+        elif ratio > 0.20:
             priority = "High"
-        elif ratio > 0.15:
+        elif ratio > 0.05:
             priority = "Moderate"
         else:
             priority = "Low"
             
+    elif "water" in cn or "leak" in cn:
+        # Water: waste of resources / flood risk
+        if ratio > 0.20:
+            priority = "High"
+        elif ratio > 0.05:
+            priority = "Moderate"
+        else:
+            priority = "Low"
+
     elif "traffic" in cn or "signal" in cn:
         priority = "Critical" # Traffic signals are always critical safety issues
         
     elif "light" in cn:
+        # Streetlights: safety issue at night
         priority = "Moderate" if ratio > 0.05 else "Low"
     
     return priority
@@ -122,7 +136,7 @@ async def predict(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 @app.post("/verify-resolution")
-async def verify_resolution(file: UploadFile = File(...)):
+async def verify_resolution(file: UploadFile = File(...), issue_type: str = Form(...)): # Added issue_type param
     if not model:
          return {"error": "Model not loaded"}
 
@@ -136,33 +150,49 @@ async def verify_resolution(file: UploadFile = File(...)):
         # Run model with lower confidence to be strict about cleanliness
         results = model(image_path, conf=0.25)
         
-        has_garbage = False
-        detected_garbage_classes = []
+        has_issue = False
+        detected_related_classes = []
         
-        garbage_classes = ["garbage", "dump", "trash", "rubbish", "plastic", "waste"]
+        # Determine target classes based on issue_type
+        target_classes = []
+        it = issue_type.lower()
+        
+        if "pothole" in it or "road" in it:
+            target_classes = ["pothole", "road damage"]
+        elif "garbage" in it or "dump" in it or "trash" in it:
+            target_classes = ["garbage", "dump", "trash", "rubbish", "plastic", "waste"]
+        elif "water" in it or "leak" in it:
+            target_classes = ["water_leak", "leak", "water"]
+        elif "light" in it:
+            target_classes = ["streetlight", "light"]
+        elif "traffic" in it or "signal" in it:
+            target_classes = ["traffic signal", "signal"]
+        else:
+             # Fallback: check if ANY supported class is present
+             target_classes = list(model.names.values())
 
         for r in results:
             for box in r.boxes:
                 class_name = model.names[int(box.cls)].lower()
-                # Check if any garbage-related class is detected
-                if any(g_class in class_name for g_class in garbage_classes):
-                    has_garbage = True
-                    detected_garbage_classes.append(class_name)
+                # Check if any target class is detected
+                if any(t_class in class_name for t_class in target_classes):
+                    has_issue = True
+                    detected_related_classes.append(class_name)
         
         # Cleanup temp
         if os.path.exists(image_path):
             os.remove(image_path)
             
-        if has_garbage:
+        if has_issue:
             return {
                 "resolved": False, 
-                "message": f"Verification failed. Detected: {', '.join(set(detected_garbage_classes))}",
-                "detections": list(set(detected_garbage_classes))
+                "message": f"Verification failed. Still detected: {', '.join(set(detected_related_classes))}",
+                "detections": list(set(detected_related_classes))
             }
         else:
             return {
-                "resolved": True,
-                "message": "Verification successful. No garbage detected."
+                "resolved": True, 
+                "message": "Verification successful. Issue appears resolved."
             }
 
     except Exception as e:

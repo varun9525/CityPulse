@@ -134,9 +134,10 @@ export const api = {
     return data;
   },
 
-  verifyResolution: async (file: File) => {
+  verifyResolution: async (file: File, issueType: string) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('issue_type', issueType);
 
     const resp = await fetch(`${BACKEND_URL}/verify-resolution`, {
       method: 'POST',

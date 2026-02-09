@@ -30,7 +30,7 @@ export function AdminDashboard() {
 
   const totalComplaints = reports?.length || 0;
   const openIssues = reports?.filter(r => r.status === 'PENDING').length || 0;
-  const resolvedIssues = reports?.filter(r => r.status === 'RESOLVED').length || 0;
+  const resolvedIssues = reports?.filter(r => r.status === 'RESOLVED' || r.status === 'APPROVED').length || 0;
 
   if (isLoading) {
     return (
@@ -42,11 +42,23 @@ export function AdminDashboard() {
 
   // Calculate trends for charts (simplified)
   // Calculate trends for charts (simplified)
+  // Calculate trends for charts (simplified)
+  const getCount = (types: string[]) => reports?.filter(r => types.some(t => r.type?.toLowerCase().includes(t))).length || 0;
+
   const issueDistribution = [
-    { name: 'Roads', value: reports?.filter(r => r.type?.includes('Pothole')).length || 0, color: '#3b82f6' },
-    { name: 'Sanitation', value: reports?.filter(r => r.type?.includes('Dumping') || r.type?.includes('Trash')).length || 0, color: '#10b981' },
-    { name: 'Lighting', value: reports?.filter(r => r.type?.includes('Light')).length || 0, color: '#f59e0b' },
-    { name: 'Other', value: reports?.filter(r => !r.type?.includes('Pothole') && !r.type?.includes('Dumping') && !r.type?.includes('Light')).length || 0, color: '#6366f1' },
+    { name: 'Roads', value: getCount(['pothole', 'road']), color: '#ef4444' }, // Red
+    { name: 'Sanitation', value: getCount(['garbage', 'dump', 'trash']), color: '#10b981' }, // Emerald
+    { name: 'Lighting', value: getCount(['light', 'street']), color: '#f59e0b' }, // Amber
+    { name: 'Water', value: getCount(['water', 'leak']), color: '#3b82f6' }, // Blue
+    {
+      name: 'Other', value: reports?.filter(r => {
+        const t = r.type?.toLowerCase() || '';
+        return !t.includes('pothole') && !t.includes('road') &&
+          !t.includes('garbage') && !t.includes('dump') && !t.includes('trash') &&
+          !t.includes('light') && !t.includes('street') &&
+          !t.includes('water') && !t.includes('leak');
+      }).length || 0, color: '#6366f1'
+    }, // Indigo
   ].filter(d => d.value > 0);
 
   // If no data, use placeholders for charts to look good
@@ -98,7 +110,7 @@ export function AdminDashboard() {
           trend="down"
         />
         <StatCard
-          title="Resolved"
+          title="Resolved & Approved"
           value={resolvedIssues.toString()}
           change="Completed"
           icon={<CheckCircle className="h-5 w-5 text-emerald-600" />}
@@ -194,9 +206,10 @@ export function AdminDashboard() {
 
 function IssueTable({ reports, onUpdate }: { reports: any[], onUpdate: () => void }) {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolvingType, setResolvingType] = useState<string>('');
   const [resolveFile, setResolveFile] = useState<File | null>(null);
 
-  const handleResolve = async (id: string) => {
+  const handleResolve = async (id: string, type: string) => {
     if (!resolveFile) return;
 
     // Optimistic UI update or loading state could be added here
@@ -204,7 +217,7 @@ function IssueTable({ reports, onUpdate }: { reports: any[], onUpdate: () => voi
 
     try {
       // 1. Verify resolution with AI
-      const verifyRes = await api.verifyResolution(resolveFile);
+      const verifyRes = await api.verifyResolution(resolveFile, type);
 
       if (!verifyRes.resolved) {
         toast.dismiss(toastId);
@@ -299,19 +312,26 @@ function IssueTable({ reports, onUpdate }: { reports: any[], onUpdate: () => voi
                         {resolvingId === row.id ? (
                           <div className="flex items-center gap-2">
                             <input type="file" className="text-xs w-24" onChange={e => setResolveFile(e.target.files?.[0] || null)} />
-                            <Button size="sm" onClick={() => handleResolve(row.id)}>Upload</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setResolvingId(null)}>Cancel</Button>
+                            <Button size="sm" onClick={() => handleResolve(row.id, row.type)}>Upload</Button>
+                            <Button size="sm" variant="ghost" onClick={() => { setResolvingId(null); setResolvingType(''); }}>Cancel</Button>
                           </div>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={() => setResolvingId(row.id)}>Resolve</Button>
+                          <Button size="sm" variant="outline" onClick={() => { setResolvingId(row.id); setResolvingType(row.type); }}>Resolve</Button>
                         )}
                       </div>
                     )}
 
                     {row.status === 'RESOLVED' && (
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => window.open(row.resolved_image_url, '_blank')}>Fixed Img</Button>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprove(row.id)}>Approve</Button>
+                        <Button size="sm" variant="ghost" onClick={() => window.open(row.resolved_image_url, '_blank')}>Proof</Button>
+                        <Button
+                          size="sm"
+                          className="text-white whitespace-nowrap"
+                          style={{ backgroundColor: '#16a34a', color: 'white', borderColor: '#16a34a' }}
+                          onClick={() => handleApprove(row.id)}
+                        >
+                          Approve
+                        </Button>
                       </div>
                     )}
                   </td>
