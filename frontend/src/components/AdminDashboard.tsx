@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AlertTriangle, CheckCircle, Clock, Users, Loader2, LogOut } from 'lucide-react';
 import { api } from '@/utils/api';
 import { supabase } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { format } from 'date-fns';
+import { MapPin } from 'lucide-react';
 
 export function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
@@ -30,10 +31,6 @@ export function AdminDashboard() {
   const totalComplaints = reports?.length || 0;
   const openIssues = reports?.filter(r => r.status === 'PENDING').length || 0;
   const resolvedIssues = reports?.filter(r => r.status === 'RESOLVED').length || 0;
-
-  const handleViewImage = (url: string) => {
-    window.open(url, '_blank');
-  };
 
   if (isLoading) {
     return (
@@ -201,14 +198,35 @@ function IssueTable({ reports, onUpdate }: { reports: any[], onUpdate: () => voi
 
   const handleResolve = async (id: string) => {
     if (!resolveFile) return;
+
+    // Optimistic UI update or loading state could be added here
+    const toastId = toast.loading("Verifying resolution evidence...");
+
     try {
+      // 1. Verify resolution with AI
+      const verifyRes = await api.verifyResolution(resolveFile);
+
+      if (!verifyRes.resolved) {
+        toast.dismiss(toastId);
+        toast.error("Verification Failed", {
+          description: verifyRes.message || "Issue still detected in the photo."
+        });
+        return;
+      }
+
+      toast.dismiss(toastId);
+      toast.loading("Verification passed. Resolving issue...", { id: toastId });
+
+      // 2. Proceed to resolve
       await api.resolveIssue(id, resolveFile);
-      toast.success("Issue resolved!");
+      toast.dismiss(toastId);
+      toast.success("Issue resolved successfully!");
       setResolvingId(null);
       setResolveFile(null);
       onUpdate();
-    } catch (e) {
-      toast.error("Failed to resolve issue");
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error("Failed to resolve issue", { description: e.message });
     }
   };
 
@@ -249,7 +267,21 @@ function IssueTable({ reports, onUpdate }: { reports: any[], onUpdate: () => voi
                     {row.type}
                     {row.risk === 'Critical' && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Critical</span>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{row.location || `${row.lat?.toFixed(4)}, ${row.lng?.toFixed(4)}`}</td>
+                  <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">
+                    {row.lat && row.lng ? (
+                      <a
+                        href={`https://www.google.com/maps?q=${row.lat},${row.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {row.location || `${row.lat.toFixed(4)}, ${row.lng.toFixed(4)}`}
+                      </a>
+                    ) : (
+                      <span>{row.location || 'No location'}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${row.status === 'PENDING' ? 'bg-red-100 text-red-700' :

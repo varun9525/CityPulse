@@ -16,6 +16,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const [role, setRole] = useState<'citizen' | 'admin'>('citizen');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [adminCode, setAdminCode] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +42,13 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    if (role === 'admin' && adminCode !== 'CITYPULSE_ADMIN') {
+      toast.error('Invalid Admin Code. Authorization failed.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Sign up with Supabase
       const { error } = await supabase.auth.signUp({
@@ -97,6 +105,23 @@ export function Login({ onLoginSuccess }: LoginProps) {
                 <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-slate-500 pointer-events-none" />
               </div>
             </div>
+
+            {isSignUp && role === 'admin' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <label className="text-sm font-medium text-slate-700">Admin Secret Code</label>
+                <Input
+                  type="password"
+                  placeholder="Enter secret code"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  className="border-amber-200 focus:ring-amber-500"
+                  required
+                />
+                <p className="text-xs text-amber-600">
+                  Required for official city verification.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Email</label>

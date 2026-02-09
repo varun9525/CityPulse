@@ -70,10 +70,7 @@ export default function App() {
     const email = session.user.email || '';
     // Role check from metadata or email domain for demo
     return (
-      session.user.user_metadata?.role === 'admin' ||
-      email.endsWith('.gov') ||
-      email.endsWith('.org') ||
-      email === 'admin@citypulse.ai'
+      session.user.user_metadata?.role === 'admin'
     );
   };
 

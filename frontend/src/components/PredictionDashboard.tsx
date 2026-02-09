@@ -4,24 +4,44 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { BrainCircuit, TrendingUp, AlertOctagon, Map as MapIcon } from 'lucide-react';
 
 export function PredictionDashboard() {
-  const predictionData = [
-    { month: 'Jan', risk: 30 },
-    { month: 'Feb', risk: 45 },
-    { month: 'Mar', risk: 35 },
-    { month: 'Apr', risk: 55 },
-    { month: 'May', risk: 70 },
-    { month: 'Jun', risk: 85 },
-  ];
+  const [predictionData, setPredictionData] = React.useState<any[]>([]);
+  const [riskZones, setRiskZones] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch from our new backend endpoint
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/analytics/predict`);
+        const data = await response.json();
+
+        if (data.forecast) {
+          setPredictionData(data.forecast);
+        }
+        if (data.risk_zones) {
+          setRiskZones(data.risk_zones);
+        }
+      } catch (error) {
+        console.error("Failed to fetch predictions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const highRiskZone = riskZones.length > 0 ? riskZones[0] : null;
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       <div className="mb-6">
         <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-4">
-          <BrainCircuit className="w-4 h-4 mr-2" /> AI Predictive Model v2.4
+          <BrainCircuit className="w-4 h-4 mr-2" /> AI Predictive Model v3.0 (Random Forest)
         </div>
         <h1 className="text-3xl font-bold text-slate-900">Risk Prediction & Analytics</h1>
         <p className="text-slate-500 max-w-3xl mt-2">
-          Our AI analyzes historical data, weather patterns, and urban density to predict future infrastructure failures and high-risk zones.
+          Our AI model analyzes historical patterns (synthetic + real) to forecast future infrastructure risks.
         </p>
       </div>
 
@@ -29,36 +49,49 @@ export function PredictionDashboard() {
         <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-xl">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-indigo-100">Predicted Critical Failures</h3>
+              <h3 className="font-semibold text-indigo-100">Forecasted High Risks</h3>
               <AlertOctagon className="text-indigo-200" />
             </div>
-            <div className="text-4xl font-bold mb-2">12</div>
-            <p className="text-indigo-100 text-sm">Expected in next 30 days based on current wear patterns.</p>
+            <div className="text-4xl font-bold mb-2">
+              {predictionData.length > 0 ? predictionData.reduce((acc, curr) => acc + (curr.type === 'Predicted' ? curr.risk : 0), 0) : '...'}
+            </div>
+            <p className="text-indigo-100 text-sm">Predicted critical issues for the upcoming quarter.</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-sm">
-           <CardContent className="p-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-600">High Risk Zone</h3>
+              <h3 className="font-semibold text-slate-600">Highest Risk Zone</h3>
               <MapIcon className="text-slate-400" />
             </div>
-            <div className="text-2xl font-bold text-slate-900 mb-1">Downtown Sector 4</div>
-            <div className="flex items-center text-sm text-red-500 font-medium">
-              <TrendingUp className="w-4 h-4 mr-1" /> +15% Risk Increase
+            <div className="text-2xl font-bold text-slate-900 mb-1">
+              {highRiskZone?.area_name || 'Analyzing...'}
             </div>
-            <p className="text-slate-500 text-sm mt-2">Due to heavy construction traffic and recent storms.</p>
+            <div className="text-xs text-slate-500 mb-2">
+              {highRiskZone ? `Lat: ${highRiskZone.lat.toFixed(3)}, Lng: ${highRiskZone.lng.toFixed(3)}` : ''}
+            </div>
+            <div className="flex items-center text-sm text-red-500 font-medium">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              {highRiskZone ? `Risk Score: ${highRiskZone.risk_score}` : '...'}
+            </div>
+            <p className="text-slate-500 text-sm mt-2">
+              {highRiskZone?.weather_forecast === 'Rainy' ? '⚠️ High Rain Forecast: potential waterlogging.' : 'Area requiring immediate preventative maintenance.'}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-slate-200 shadow-sm">
-           <CardContent className="p-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-600">Prevention Savings</h3>
-              <TrendingUp className="text-emerald-500" />
+              <h3 className="font-semibold text-slate-600">Model Status</h3>
+              <BrainCircuit className="text-emerald-500" />
             </div>
-            <div className="text-2xl font-bold text-slate-900 mb-1">$45,200</div>
-            <p className="text-slate-500 text-sm">Estimated savings this month by addressing predicted issues early.</p>
+            <div className="text-2xl font-bold text-slate-900 mb-1">Active</div>
+            <p className="text-slate-500 text-sm">
+              Region: <strong>Vadodara</strong><br />
+              Features: Weather (Open-Meteo), History
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -67,8 +100,8 @@ export function PredictionDashboard() {
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Infrastructure Stress Forecast</CardTitle>
-              <CardDescription>Projected strain on city infrastructure for the next 6 months.</CardDescription>
+              <CardTitle>Infrastructure Risk Forecast</CardTitle>
+              <CardDescription>Historical data vs AI Predictions (Random Forest).</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[320px] w-full min-w-0">
@@ -76,17 +109,25 @@ export function PredictionDashboard() {
                   <AreaChart data={predictionData}>
                     <defs>
                       <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="month" stroke="#64748b" tickLine={false} axisLine={false} />
                     <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
-                    <Tooltip 
-                       contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
                     />
-                    <Area type="monotone" dataKey="risk" stroke="#8884d8" fillOpacity={1} fill="url(#colorRisk)" strokeWidth={3} />
+                    <Area
+                      type="monotone"
+                      dataKey="risk"
+                      stroke="#8884d8"
+                      fillOpacity={1}
+                      fill="url(#colorRisk)"
+                      strokeWidth={3}
+                      name="Risk Level"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -98,25 +139,38 @@ export function PredictionDashboard() {
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>Risk Heatmap</CardTitle>
-              <CardDescription>Areas requiring preventative maintenance.</CardDescription>
+              <CardDescription>Top high-risk coordinates in Vadodara.</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow relative overflow-hidden rounded-b-xl min-h-[300px] p-0">
-               {/* CSS Heatmap Simulation */}
-               <div className="absolute inset-0 bg-slate-900">
-                  <div className="absolute top-[20%] left-[30%] w-32 h-32 bg-red-500 rounded-full blur-3xl opacity-60 animate-pulse"></div>
-                  <div className="absolute bottom-[20%] right-[30%] w-40 h-40 bg-orange-500 rounded-full blur-3xl opacity-50"></div>
-                  <div className="absolute top-[50%] right-[50%] w-24 h-24 bg-yellow-500 rounded-full blur-2xl opacity-40"></div>
-                  
-                  {/* Grid Lines Overlay */}
-                  <div className="absolute inset-0" style={{ 
-                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', 
-                    backgroundSize: '40px 40px' 
-                  }}></div>
-                  
-                  {/* Labels */}
-                  <div className="absolute top-[25%] left-[35%] text-white text-xs font-bold bg-black/50 px-2 py-1 rounded backdrop-blur-md">Sector 7 (High)</div>
-                  <div className="absolute bottom-[25%] right-[35%] text-white text-xs font-bold bg-black/50 px-2 py-1 rounded backdrop-blur-md">Sector 3 (Med)</div>
-               </div>
+            <CardContent className="flex-grow relative overflow-hidden rounded-b-xl min-h-[300px] p-4">
+              <div className="space-y-4">
+                {riskZones.slice(0, 5).map((zone, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs mr-3">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm text-slate-900">
+                          {zone.area_name || `${zone.lat.toFixed(4)}, ${zone.lng.toFixed(4)}`}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {zone.weather_forecast === 'Rainy' ? '🌧️ Rain Impact' : 'Critical Zone'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-red-600">{zone.risk_score}</div>
+                      <div className="text-[10px] text-slate-400">Risk Score</div>
+                    </div>
+                  </div>
+                ))}
+
+                {riskZones.length === 0 && (
+                  <div className="text-center text-slate-400 mt-10">
+                    No high risk zones detected yet.
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

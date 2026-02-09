@@ -68,8 +68,8 @@ export function ComplaintStatus() {
           animate={{ opacity: 1, y: 0 }}
         >
           <Card className={`overflow-hidden border-t-4 shadow-lg ${report.status === 'RESOLVED' || report.status === 'APPROVED' ? 'border-t-emerald-500' :
-              report.status === 'PENDING' ? 'border-t-amber-500' :
-                'border-t-red-500'
+            report.status === 'PENDING' ? 'border-t-amber-500' :
+              'border-t-red-500'
             }`}>
             <CardHeader className="bg-slate-50 border-b border-slate-100">
               <div className="flex justify-between items-center">
@@ -80,8 +80,8 @@ export function ComplaintStatus() {
                   </p>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-semibold border ${report.status === 'RESOLVED' || report.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                    report.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                      'bg-red-100 text-red-800 border-red-200'
+                  report.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                    'bg-red-100 text-red-800 border-red-200'
                   }`}>
                   {report.status}
                 </div>
@@ -120,15 +120,31 @@ export function ComplaintStatus() {
               {/* Details Grid */}
               <div className="grid md:grid-cols-3 gap-8">
                 <div className="md:col-span-1">
-                  <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm h-48 bg-slate-100 relative group">
-                    <img
-                      src={report.image_url || report.imageUrl}
-                      alt="Issue"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white text-xs">
-                      Original Photo
+                  <div className={`grid gap-4 ${report.resolved_image_url ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-1' : ''}`}>
+                    <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm h-48 bg-slate-100 relative group">
+                      <img
+                        src={report.image_url || report.imageUrl}
+                        alt="Issue"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white text-xs">
+                        Original Photo
+                      </div>
                     </div>
+
+                    {report.resolved_image_url && (
+                      <div className="rounded-lg overflow-hidden border border-emerald-200 shadow-sm h-48 bg-emerald-50 relative group">
+                        <img
+                          src={report.resolved_image_url}
+                          alt="Resolved"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-emerald-900/80 p-2 text-white text-xs flex items-center">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Resolved Photo
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="md:col-span-2 space-y-4">

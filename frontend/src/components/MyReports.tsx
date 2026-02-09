@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { api } from '@/utils/api';
 import { supabase } from '@/utils/supabaseClient';
 import { format } from 'date-fns';
-import { Loader2, MapPin, AlertTriangle, Clock, ArrowRight } from 'lucide-react';
+import { Loader2, MapPin, AlertTriangle, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function MyReports({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -74,20 +74,29 @@ export function MyReports({ onNavigate }: { onNavigate: (page: string) => void }
                reports.map((report) => (
                   <Card key={report.id} className="overflow-hidden hover:shadow-md transition-shadow">
                      <div className="flex flex-col md:flex-row">
-                        <div className="w-full md:w-48 h-48 md:h-auto bg-slate-100 relative">
-                           <img
-                              src={report.image_url || report.imageUrl}
-                              alt={report.type}
-                              className="absolute inset-0 w-full h-full object-cover"
-                           />
+                        <div className="w-full md:w-48 bg-slate-100 relative flex flex-col">
+                           <div className="h-48 relative">
+                              <img
+                                 src={report.image_url || report.imageUrl}
+                                 alt={report.type}
+                                 className="absolute inset-0 w-full h-full object-cover"
+                              />
+                           </div>
+                           {report.resolved_image_url && (
+                              <div className="h-12 bg-emerald-100 flex items-center justify-center border-t border-emerald-200 cursor-pointer hover:bg-emerald-200 transition-colors" onClick={() => window.open(report.resolved_image_url, '_blank')}>
+                                 <span className="text-xs font-medium text-emerald-800 flex items-center">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" /> View Fix
+                                 </span>
+                              </div>
+                           )}
                         </div>
                         <div className="flex-1 p-6 flex flex-col justify-between">
                            <div>
                               <div className="flex justify-between items-start mb-2">
                                  <h3 className="font-bold text-lg text-slate-900">{report.type}</h3>
                                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${report.status === 'RESOLVED' || report.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                                       report.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                                          'bg-red-100 text-red-800 border-red-200'
+                                    report.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                       'bg-red-100 text-red-800 border-red-200'
                                     }`}>
                                     {report.status}
                                  </span>

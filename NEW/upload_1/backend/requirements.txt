@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.2.0+cpu
+torchvision==0.17.0+cpu
+numpy==1.26.4
+# Use headless OpenCV to avoid libGL.so.1 errors on Render Native environment
+opencv-python-headless==4.9.0.80
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+pillow==10.2.0
+ultralytics==8.1.19
+sqlalchemy==2.0.28
+pydantic==2.6.3
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4

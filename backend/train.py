@@ -13,10 +13,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default="yolov8m.pt",
+        default="yolov8n.pt",
         help="Base model or checkpoint to fine-tune.",
     )
-    parser.add_argument("--epochs", type=int, default=150, help="Number of epochs.")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of epochs.")
     parser.add_argument("--imgsz", type=int, default=640, help="Image size.")
     parser.add_argument("--batch", type=int, default=16, help="Batch size.")
     parser.add_argument(

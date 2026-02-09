@@ -1,6 +1,6 @@
-train: train/images
-val: valid/images
-test: test/images
+train: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/train/images
+val: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/valid/images
+test: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/test/images
 
 nc: 4
 names:

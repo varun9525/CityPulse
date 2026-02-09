@@ -134,6 +134,23 @@ export const api = {
     return data;
   },
 
+  verifyResolution: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const resp = await fetch(`${BACKEND_URL}/verify-resolution`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Verification request failed (${resp.status}): ${text}`);
+    }
+
+    return resp.json();
+  },
+
   // Auth is handled directly by supabase.auth in components
 }
 

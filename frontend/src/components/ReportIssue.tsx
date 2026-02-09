@@ -1,5 +1,5 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
@@ -24,6 +24,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
   const [detectedConfidence, setDetectedConfidence] = useState<number | null>(null);
   const [detectedLat, setDetectedLat] = useState<number | null>(null);
   const [detectedLng, setDetectedLng] = useState<number | null>(null);
+  const [detectedPriority, setDetectedPriority] = useState<string | null>(null);
   const [description, setDescription] = useState('');
 
   const CONF_THRESHOLD = 60;
@@ -31,22 +32,37 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
   const getPriorityForType = (type: string) => {
     const t = (type || '').toLowerCase();
     if (!t) return 'Moderate';
-    if (t.includes('dump') || t.includes('garbage') || t.includes('illegal')) return 'High';
-    if (t.includes('pothole') || t.includes('road')) return 'High';
+    // Default fallback for garbage should be Low unless AI says otherwise (size-based)
+    if (t.includes('dump') || t.includes('garbage') || t.includes('illegal')) return 'Low';
+    if (t.includes('pothole') || t.includes('road')) return 'Moderate';
     if (t.includes('street light') || t.includes('streetlight') || t.includes('light')) return 'Low';
-    if (t.includes('traffic') || t.includes('signal')) return 'Moderate';
+    if (t.includes('traffic') || t.includes('signal')) return 'Critical';
     return 'Moderate';
   };
 
   const fetchGeolocation = () => {
     if (!navigator?.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setDetectedLat(lat);
         setDetectedLng(lng);
+
+        // Initial coordinate set
         setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+
+        // Reverse Geocoding using OpenStreetMap Nominatim
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await response.json();
+          if (data && data.display_name) {
+            setDetectedLocation(data.display_name);
+          }
+        } catch (error) {
+          console.error("Failed to fetch address:", error);
+          // Fallback is already set
+        }
       },
       (err) => console.warn('Geolocation error:', err.message),
       { enableHighAccuracy: true, maximumAge: 60000 }
@@ -62,6 +78,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
       const types = ['Pothole / Road Damage', 'Illegal Dumping', 'Broken Street Light', 'Traffic Signal Fault'];
       setDetectedType(types[Math.floor(Math.random() * types.length)]);
       setDetectedConfidence(94);
+      setDetectedPriority('Moderate'); // Fallback simulation
       if (!detectedLocation) setDetectedLocation('Unknown location (please provide)');
     }, 1200);
   };
@@ -71,11 +88,17 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     const file = e.target.files[0]; setSelectedFile(file);
     const reader = new FileReader(); reader.onload = () => setSelectedImage(reader.result as string); reader.readAsDataURL(file);
 
-    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null);
+    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null); setDetectedPriority(null);
     predictImage(file)
       .then((res: any) => {
         const dets = res?.detections || [];
-        if (dets.length > 0) { dets.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0)); const top = dets[0]; setDetectedType(top.class || ''); setDetectedConfidence(typeof top.confidence === 'number' ? Math.round(top.confidence * 100) : null); }
+        if (dets.length > 0) {
+          dets.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0));
+          const top = dets[0];
+          setDetectedType(top.class || '');
+          setDetectedConfidence(typeof top.confidence === 'number' ? Math.round(top.confidence * 100) : null);
+          if (top.priority) setDetectedPriority(top.priority);
+        }
         else simulateAIAnalysis();
       })
       .catch((err) => { console.error(err); simulateAIAnalysis(); })
@@ -87,13 +110,17 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
     try {
       const formData = new FormData(); formData.append('image', selectedFile); formData.append('type', detectedType); formData.append('location', detectedLocation);
       if (detectedLat !== null && detectedLng !== null) { formData.append('lat', detectedLat.toString()); formData.append('lng', detectedLng.toString()); }
-      const priority = getPriorityForType(detectedType); formData.append('priority', priority); const risk = priority === 'High' ? 'Critical' : priority === 'Moderate' ? 'Moderate' : 'Low'; formData.append('risk', risk);
+
+      const priority = detectedPriority || getPriorityForType(detectedType);
+      formData.append('priority', priority);
+      const risk = priority === 'High' || priority === 'Critical' ? 'Critical' : priority === 'Moderate' ? 'Moderate' : 'Low';
+      formData.append('risk', risk);
       formData.append('description', description);
       let token = null; let session = null;
       try { const { data, error } = await supabase.auth.refreshSession(); if (!error && data.session) { session = data.session; token = data.session.access_token; } else { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; } }
       catch (e) { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; }
       if (session?.user?.id) formData.append('userId', session.user.id);
-      const result = await api.submitReport(formData, token);
+      const result = await api.submitReport(formData);
       toast.success(`Report Submitted: #${result.id}`, { description: 'Thank you for your contribution to the city.', duration: 5000 });
       onSuccess();
     } catch (err) { toast.error('Failed to submit report. Please try again.'); console.error(err); }
@@ -149,7 +176,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
                   ) : analysisComplete ? (
                     <div className="w-full">
                       <div className="flex items-center text-emerald-600 mb-2"><CheckCircle className="h-5 w-5 mr-2" /><span className="font-semibold text-sm">Analysis Complete</span></div>
-                      <div className="grid grid-cols-1 gap-4 text-sm"><div className="bg-white p-2 rounded border border-slate-200"><span className="text-xs text-slate-500 block">Priority</span><span className="font-medium text-amber-600">{getPriorityForType(detectedType)}</span>{((detectedConfidence !== null && detectedConfidence < CONF_THRESHOLD) || !detectedType) && (<div className="text-xs text-slate-500 mt-1">Detection uncertain — you can edit the issue type below.</div>)}</div></div>
+                      <div className="grid grid-cols-1 gap-4 text-sm"><div className="bg-white p-2 rounded border border-slate-200"><span className="text-xs text-slate-500 block">Priority</span><span className="font-medium text-amber-600">{detectedPriority || getPriorityForType(detectedType)}</span>{((detectedConfidence !== null && detectedConfidence < CONF_THRESHOLD) || !detectedType) && (<div className="text-xs text-slate-500 mt-1">Detection uncertain — you can edit the issue type below.</div>)}</div></div>
                     </div>
                   ) : null}
                 </div>
