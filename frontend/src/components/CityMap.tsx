@@ -2,19 +2,53 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Filter, Layers, Zap, AlertCircle, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { api } from '@/utils/api';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in React-Leaflet
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Custom Icons for Risk Levels
+const createCustomIcon = (colorClass: string) => {
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div style="background-color: ${colorClass}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+};
+
+const icons = {
+  critical: createCustomIcon('#ef4444'), // Red-500
+  moderate: createCustomIcon('#f59e0b'), // Amber-500
+  low: createCustomIcon('#10b981')       // Emerald-500
+};
 
 export function CityMap() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Vadodara Center Coords
+  const VADODARA_CENTER: [number, number] = [22.3072, 73.1812];
+
   useEffect(() => {
     const fetchReports = async () => {
       try {
         const data = await api.getReports();
-        setReports(data);
+        setReports(data || []);
       } catch (error) {
         console.error("Failed to load map data", error);
       } finally {
@@ -96,74 +130,40 @@ export function CityMap() {
       </div>
 
       {/* Map Area */}
-      <div className="flex-grow relative bg-slate-200">
-        {/* Mock Map Background */}
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-80"
-          style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1542382257-80dedb725088?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwbWFwJTIwdmlldyUyMHRvcCUyMGRvd258ZW58MXx8fHwxNzY5ODQyNzAwfDA&ixlib=rb-4.1.0&q=80&w=1600)',
-            filter: 'grayscale(30%) contrast(110%) brightness(110%)'
-          }}
-        />
-
-        {/* Map Overlay Gradient */}
-        <div className="absolute inset-0 bg-blue-900/10 pointer-events-none"></div>
-
-        {/* Real Data Markers */}
-        {filteredReports.map((report) => (
-          <MapMarker
-            key={report.id}
-            // Normalize lat/lng to roughly fit on screen for demo purposes since we don't have a real map
-            // We use the stored coords if they exist, or random if not (should exist)
-            x={50 + (report.lng || 0) * 1000 + (Math.random() * 40 - 20)}
-            y={50 + (report.lat || 0) * 1000 + (Math.random() * 40 - 20)}
-            type={getRiskType(report.risk)}
-            label={report.type}
+      <div className="flex-grow relative bg-slate-200 z-0">
+        <MapContainer
+          center={VADODARA_CENTER}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
-        ))}
 
-        {/* Floating Controls */}
-        <div className="absolute top-6 right-6 flex flex-col gap-2">
-          <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
-            <span className="text-xl font-bold text-slate-700">+</span>
-          </Button>
-          <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-slate-100">
-            <span className="text-xl font-bold text-slate-700">-</span>
-          </Button>
-        </div>
+          {filteredReports.map((report) => (
+            report.lat && report.lng ? (
+              <Marker
+                key={report.id}
+                position={[report.lat, report.lng]}
+                icon={icons[getRiskType(report.risk)] || icons.moderate}
+              >
+                <Popup>
+                  <div className="flex flex-col gap-2 min-w-[200px]">
+                    <div className="font-bold text-sm border-b pb-1 mb-1">{report.type}</div>
+                    {report.image_url && <img src={report.image_url} alt="Issue" className="w-full h-32 object-cover rounded" />}
+                    <div className="text-xs text-slate-600">{report.location || `${report.lat.toFixed(4)}, ${report.lng.toFixed(4)}`}</div>
+                    <div className={`text-xs font-bold ${report.risk === 'Critical' ? 'text-red-600' : report.risk === 'Moderate' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      Risk: {report.risk}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ) : null
+          ))}
+        </MapContainer>
       </div>
     </div>
-  );
-}
-
-function MapMarker({ x, y, type, label }: { x: number, y: number, type: 'critical' | 'moderate' | 'low', label: string }) {
-  const colors = {
-    critical: 'bg-red-500 ring-red-300',
-    moderate: 'bg-amber-500 ring-amber-300',
-    low: 'bg-emerald-500 ring-emerald-300'
-  };
-
-  return (
-    <motion.div
-      className="absolute group cursor-pointer"
-      style={{ left: `${x}%`, top: `${y}%` }}
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-      whileHover={{ scale: 1.2, zIndex: 50 }}
-    >
-      <div className={`w-4 h-4 rounded-full ${colors[type]} ring-4 ring-opacity-50 shadow-lg relative`}>
-        <div className={`absolute -inset-2 rounded-full ${colors[type]} opacity-20 animate-ping`}></div>
-      </div>
-
-      {/* Tooltip */}
-      <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-        <div className="bg-slate-900 text-white text-xs py-1 px-2 rounded shadow-lg flex items-center">
-          {type === 'critical' && <AlertCircle className="w-3 h-3 mr-1 text-red-400" />}
-          {label}
-        </div>
-        <div className="w-2 h-2 bg-slate-900 rotate-45 absolute left-1/2 -bottom-1 -translate-x-1/2"></div>
-      </div>
-    </motion.div>
   );
 }
