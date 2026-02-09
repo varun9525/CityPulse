@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Upload, X, MapPin, Loader2, CheckCircle, Camera } from 'lucide-react';
 import { api, predictImage } from '@/utils/api';
@@ -56,35 +56,38 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
           if (data && data.address) {
             console.log("Nominatim Data:", data); // Debugging for user
 
-            // Strategy: Strictly "Area Name, City Name"
+            // Strategy: "Near [Landmark] + [Road] + [Area] + [City] + [Pincode]"
             const addr = data.address;
             const parts = [];
 
-            // 1. Find Area Name (Prioritize most specific)
-            // 'neighbourhood': e.g. "Alkapuri"
-            // 'suburb': e.g. "Vadodara Rural" or Sector names
-            // 'quarter', 'borough', 'city_block': other variations
-            const area = addr.neighbourhood || addr.suburb || addr.residential || addr.quarter || addr.city_block || addr.borough || addr.road || addr.village || '';
-
-            if (area) {
-              parts.push(area);
+            // 1. "Near" + Nearest Location (Landmark)
+            const landmark = addr.amenity || addr.shop || addr.tourism || addr.historic || addr.leisure || addr.building || addr.office;
+            if (landmark) {
+              parts.push(`Near ${landmark}`);
             }
 
-            // 2. Find City Name
-            const city = addr.city || addr.town || addr.city_district || addr.county || '';
+            // 2. Road Name
+            const road = addr.road || addr.pedestrian || addr.highway || addr.street;
+            if (road) parts.push(road);
 
-            // Only add city if it's different from the area we found
-            if (city && city.toLowerCase() !== area.toLowerCase()) {
-              parts.push(city);
+            // 3. Area Name
+            const area = addr.neighbourhood || addr.suburb || addr.residential || addr.colony || addr.village || addr.quarter;
+            if (area) parts.push(area);
+
+            // 4. City
+            const city = addr.city || addr.town || addr.district || addr.county;
+            if (city) parts.push(city);
+
+            // 5. Pincode
+            if (addr.postcode) {
+              parts.push(addr.postcode);
             }
 
-            // 3. Set Final Location
-            // If we have at least one part, we use our constructed string.
-            if (parts.length > 0) {
+            // Set Final Location
+            if (parts.length >= 2) {
               setDetectedLocation(parts.join(', '));
             } else if (data.display_name) {
-              // Fallback: take first 2 parts of display name if we found absolutely nothing specific
-              setDetectedLocation(data.display_name.split(',').slice(0, 2).join(', '));
+              setDetectedLocation(data.display_name);
             } else {
               setDetectedLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
             }
@@ -158,11 +161,21 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
       if (detectedLat !== null && detectedLng !== null) { formData.append('lat', detectedLat.toString()); formData.append('lng', detectedLng.toString()); }
       const priority = getPriorityForType(detectedType); formData.append('priority', priority); const risk = priority === 'High' ? 'Critical' : priority === 'Moderate' ? 'Moderate' : 'Low'; formData.append('risk', risk);
       formData.append('description', description);
-      let token = null; let session = null;
-      try { const { data, error } = await supabase.auth.refreshSession(); if (!error && data.session) { session = data.session; token = data.session.access_token; } else { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; } }
-      catch (e) { const { data: sessionData } = await supabase.auth.getSession(); session = sessionData.session; token = sessionData.session?.access_token; }
+      let session = null;
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (!error && data.session) {
+          session = data.session;
+        } else {
+          const { data: sessionData } = await supabase.auth.getSession();
+          session = sessionData.session;
+        }
+      } catch (e) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData.session;
+      }
       if (session?.user?.id) formData.append('userId', session.user.id);
-      const result = await api.submitReport(formData, token);
+      const result = await api.submitReport(formData);
       toast.success(`Report Submitted: #${result.id}`, { description: 'Thank you for your contribution to the city.', duration: 5000 });
       onSuccess();
     } catch (err) { toast.error('Failed to submit report. Please try again.'); console.error(err); }
