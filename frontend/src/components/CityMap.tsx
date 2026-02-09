@@ -48,10 +48,10 @@ export function CityMap() {
             <div className="space-y-2">
               {[
                 { id: 'all', label: 'All Issues', count: reports.length },
-                { id: 'pothole', label: 'Road Damage', count: reports.filter(r => r.type.includes('Pothole')).length },
-                { id: 'trash', label: 'Sanitation', count: reports.filter(r => r.type.includes('Dumping') || r.type.includes('Trash')).length },
-                { id: 'light', label: 'Lighting', count: reports.filter(r => r.type.includes('Light')).length },
-                { id: 'traffic', label: 'Traffic Signal', count: reports.filter(r => r.type.includes('Traffic')).length },
+                { id: 'pothole', label: 'Road Damage', count: reports.filter(r => r.type?.toLowerCase().includes('pothole') || r.type?.toLowerCase().includes('road')).length },
+                { id: 'garbage', label: 'Sanitation', count: reports.filter(r => r.type?.toLowerCase().includes('garbage') || r.type?.toLowerCase().includes('trash') || r.type?.toLowerCase().includes('dump')).length },
+                { id: 'light', label: 'Lighting', count: reports.filter(r => r.type?.toLowerCase().includes('light') || r.type?.toLowerCase().includes('street')).length },
+                { id: 'water', label: 'Water Supply', count: reports.filter(r => r.type?.toLowerCase().includes('water') || r.type?.toLowerCase().includes('leak')).length },
               ].map((filter) => (
                 <button
                   key={filter.id}

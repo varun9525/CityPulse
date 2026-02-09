@@ -18,7 +18,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-         checkAdmin(session.user);
+        checkAdmin(session.user);
       }
     });
 
@@ -27,9 +27,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-         checkAdmin(session.user);
+        checkAdmin(session.user);
       } else {
-         setIsAdmin(false);
+        setIsAdmin(false);
       }
     });
 
@@ -37,29 +37,29 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }, []);
 
   const checkAdmin = (user: any) => {
-     const email = user.email || '';
-     const isAdm = user.user_metadata?.role === 'admin' || 
-                   email.endsWith('.gov') || 
-                   email.endsWith('.org') || 
-                   email === 'admin@citypulse.ai';
-     setIsAdmin(isAdm);
+    const email = user.email || '';
+    const isAdm = user.user_metadata?.role === 'admin' ||
+      email.endsWith('.gov') ||
+      email.endsWith('.org') ||
+      email === 'admin@citypulse.ai';
+    setIsAdmin(isAdm);
   };
 
   const navItems = [
     { name: 'Home', id: 'home', icon: Activity, public: true },
     { name: 'Report Issue', id: 'report', icon: AlertCircle, public: false, requiresUser: true },
     { name: 'Track Status', id: 'status', icon: FileText, public: false, requiresUser: true },
-    { name: 'City Map', id: 'map', icon: Map, public: false, requiresUser: true },
+    { name: 'City Map', id: 'map', icon: Map, public: false, requiresAdmin: true },
     { name: 'My Reports', id: 'my-reports', icon: User, public: false, requiresUser: true },
     { name: 'Admin', id: 'admin', icon: LayoutDashboard, public: false, requiresAdmin: true },
     { name: 'Predictions', id: 'predictions', icon: ShieldCheck, public: false, requiresAdmin: true },
   ];
 
   const visibleNavItems = navItems.filter(item => {
-     if (item.public) return true;
-     if (item.requiresAdmin && isAdmin) return true;
-     if (item.requiresUser && user && !isAdmin) return true;
-     return false;
+    if (item.public) return true;
+    if (item.requiresAdmin && isAdmin) return true;
+    if (item.requiresUser && user && !isAdmin) return true;
+    return false;
   });
 
   return (
@@ -82,34 +82,33 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentPage === item.id
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentPage === item.id
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {item.name}
                 </button>
               ))}
               <div className="ml-4 pl-4 border-l border-slate-200">
                 {user ? (
-                   <button 
-                      onClick={() => {
-                         supabase.auth.signOut();
-                         onNavigate('home');
-                      }}
-                      className="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
-                   >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                   </button>
+                  <button
+                    onClick={() => {
+                      supabase.auth.signOut();
+                      onNavigate('home');
+                    }}
+                    className="text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </button>
                 ) : (
-                   <button 
-                      onClick={() => onNavigate('login')}
-                      className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors"
-                   >
-                      Login
-                   </button>
+                  <button
+                    onClick={() => onNavigate('login')}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors"
+                  >
+                    Login
+                  </button>
                 )}
               </div>
             </nav>
@@ -143,39 +142,38 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                       onNavigate(item.id);
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium ${
-                      currentPage === item.id
+                    className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium ${currentPage === item.id
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <item.icon className="h-5 w-5 mr-3" />
                     {item.name}
                   </button>
                 ))}
                 {user ? (
-                   <button
-                     onClick={() => {
-                        supabase.auth.signOut();
-                        onNavigate('home');
-                        setIsMobileMenuOpen(false);
-                     }}
-                     className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                   >
-                     <LogOut className="h-5 w-5 mr-3" />
-                     Logout
-                   </button>
+                  <button
+                    onClick={() => {
+                      supabase.auth.signOut();
+                      onNavigate('home');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  >
+                    <LogOut className="h-5 w-5 mr-3" />
+                    Logout
+                  </button>
                 ) : (
-                   <button
-                     onClick={() => {
-                        onNavigate('login');
-                        setIsMobileMenuOpen(false);
-                     }}
-                     className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-blue-600 hover:bg-blue-50"
-                   >
-                     <User className="h-5 w-5 mr-3" />
-                     Login
-                   </button>
+                  <button
+                    onClick={() => {
+                      onNavigate('login');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-blue-600 hover:bg-blue-50"
+                  >
+                    <User className="h-5 w-5 mr-3" />
+                    Login
+                  </button>
                 )}
               </div>
             </motion.div>
