@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/Button';
-import { ArrowRight, Camera, MapPin, ShieldAlert, BarChart3, UploadCloud, User } from 'lucide-react';
+import { ArrowRight, Camera, MapPin, ShieldAlert, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 
 interface HomeProps {
@@ -14,7 +14,7 @@ export function Home({ onNavigate }: HomeProps) {
       {/* Hero Section */}
       <section className="relative bg-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0 bg-blue-900/20 z-0"></div>
-        <div 
+        <div
           className="absolute inset-0 opacity-20 z-0 bg-cover bg-center"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1760553120324-d3d2bf53852b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBzbWFydCUyMGNpdHklMjBmdXR1cmlzdGljJTIwYmx1ZSUyMGdyZWVufGVufDF8fHx8MTc2OTkyMzY1NHww&ixlib=rb-4.1.0&q=80&w=1080)' }}
         />
@@ -28,23 +28,23 @@ export function Home({ onNavigate }: HomeProps) {
               Next-Gen Smart City Platform
             </span>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              CityPulse <span className="text-blue-400">AI</span>
+              UrbanSeva <span className="text-blue-400">AI</span>
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto mb-10 leading-relaxed">
               AI-powered civic issue detection and city risk prediction. Join us in building a smarter, safer future.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => onNavigate('report')}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white text-lg px-8 py-6 rounded-full shadow-lg shadow-emerald-500/20"
               >
                 <Camera className="mr-2 h-5 w-5" />
                 Report an Issue
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
+                variant="outline"
                 onClick={() => onNavigate('login')}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-lg px-8 py-6 rounded-full backdrop-blur-sm"
               >
@@ -56,47 +56,28 @@ export function Home({ onNavigate }: HomeProps) {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-white py-12 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { label: 'Active Reports', value: '1,248', color: 'text-blue-600' },
-              { label: 'Issues Resolved', value: '8,902', color: 'text-emerald-600' },
-              { label: 'Avg. Response', value: '4.2 hrs', color: 'text-purple-600' },
-              { label: 'AI Accuracy', value: '98.5%', color: 'text-indigo-600' },
-            ].map((stat, i) => (
-              <div key={i} className="flex flex-col">
-                <span className={`text-3xl md:text-4xl font-bold ${stat.color} mb-1`}>{stat.value}</span>
-                <span className="text-slate-500 text-sm font-medium uppercase tracking-wide">{stat.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl mb-4">How CityPulse Works</h2>
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl mb-4">How UrbanSeva Works</h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Leveraging advanced computer vision and machine learning to transform urban management.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={<Camera className="h-10 w-10 text-blue-500" />}
               title="AI Image Detection"
               description="Simply snap a photo. Our AI automatically identifies the issue type (pothole, trash, lighting) and assesses severity."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<MapPin className="h-10 w-10 text-emerald-500" />}
               title="Real-time Tracking"
               description="Geo-tagged reports are instantly updated on the city map. Track the status of your report from submission to resolution."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<ShieldAlert className="h-10 w-10 text-purple-500" />}
               title="Predictive Analytics"
               description="Authorities can view high-risk zones and predict infrastructure failures before they happen using historical data trends."
@@ -121,7 +102,7 @@ export function Home({ onNavigate }: HomeProps) {
               <p className="text-blue-100 text-lg max-w-2xl mx-auto mb-10">
                 Join thousands of citizens who are actively contributing to a cleaner, safer, and more efficient urban environment.
               </p>
-              <Button 
+              <Button
                 onClick={() => onNavigate('report')}
                 className="bg-white text-blue-700 hover:bg-blue-50 text-lg px-8 py-6 rounded-full font-semibold border-none"
               >

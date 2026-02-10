@@ -71,7 +71,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="flex items-center cursor-pointer" onClick={() => onNavigate('home')}>
               <Activity className="h-8 w-8 text-blue-600 mr-2" />
               <div className="flex flex-col">
-                <span className="font-bold text-xl tracking-tight text-slate-900">CityPulse AI</span>
+                <span className="font-bold text-xl tracking-tight text-slate-900">UrbanSeva AI</span>
                 <span className="text-[10px] uppercase font-semibold text-emerald-600 tracking-wider">Smart City OS</span>
               </div>
             </div>
@@ -83,8 +83,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentPage === item.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                 >
                   {item.name}
@@ -143,8 +143,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                       setIsMobileMenuOpen(false);
                     }}
                     className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium ${currentPage === item.id
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                   >
                     <item.icon className="h-5 w-5 mr-3" />
@@ -193,7 +193,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center mb-4">
                 <Activity className="h-6 w-6 text-blue-500 mr-2" />
-                <span className="font-bold text-lg text-white">CityPulse AI</span>
+                <span className="font-bold text-lg text-white">UrbanSeva AI</span>
               </div>
               <p className="text-sm text-slate-400 max-w-sm">
                 Empowering citizens and authorities with AI-driven insights for a safer, cleaner, and smarter city.
@@ -217,7 +217,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
-            &copy; 2026 CityPulse AI. All rights reserved.
+            &copy; 2026 UrbanSeva AI. All rights reserved.
           </div>
         </div>
       </footer>

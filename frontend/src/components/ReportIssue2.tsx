@@ -17,7 +17,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
   const [analysisComplete, setAnalysisComplete] = useState(false);
 
   const [detectedType, setDetectedType] = useState('');
-  const [detectedPriority, setDetectedPriority] = useState<string>('');
+
   const [detectedLocation, setDetectedLocation] = useState('');
   const [detectedConfidence, setDetectedConfidence] = useState<number | null>(null);
   const [detectedLat, setDetectedLat] = useState<number | null>(null);
@@ -114,7 +114,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
 
   useEffect(() => { fetchGeolocation() }, []);
 
-  const simulateAIAnalysis = () => {
+  /* const simulateAIAnalysis = () => {
     setIsAnalyzing(true); setAnalysisComplete(false);
     setTimeout(() => {
       setIsAnalyzing(false); setAnalysisComplete(true);
@@ -123,14 +123,14 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
       setDetectedConfidence(94);
       if (!detectedLocation) setDetectedLocation('Unknown location (please provide)');
     }, 1200);
-  };
+  }; */
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
     const file = e.target.files[0]; setSelectedFile(file);
     const reader = new FileReader(); reader.onload = () => setSelectedImage(reader.result as string); reader.readAsDataURL(file);
 
-    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedPriority(''); setDetectedConfidence(null);
+    setIsAnalyzing(true); setAnalysisComplete(false); setDetectedType(''); setDetectedConfidence(null);
     // Call the prediction API directly without timeout
     predictImage(file)
       .then((res: any) => {
@@ -139,12 +139,12 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
           dets.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0));
           const top = dets[0];
           setDetectedType(top.class || '');
-          setDetectedPriority(top.priority || getPriorityForType(top.class));
+
           setDetectedConfidence(typeof top.confidence === 'number' ? Math.round(top.confidence * 100) : null);
         } else {
           // No detections - do NOT simulate. Let user enter manually.
           setDetectedType('');
-          setDetectedPriority('');
+
           setDetectedConfidence(null);
           toast.info("AI couldn't identify the issue. Please select the type manually.");
         }
@@ -152,7 +152,7 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
       .catch((err) => {
         console.error("AI Analysis Error:", err);
         setDetectedType('');
-        setDetectedPriority('');
+
         setDetectedConfidence(null);
         toast.error(`Analysis failed: ${err.message || 'Unknown error'}`);
       })
@@ -249,16 +249,20 @@ export function ReportIssue({ onSuccess }: ReportIssueProps) {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Location</label>
-                  <div className="relative flex items-center">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e: any) => { setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10 pr-24" />
-                    <div className="absolute right-2 top-2 flex space-x-2">
+                  <div className="flex gap-2">
+                    <div className="relative flex-grow">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <Input value={detectedLocation} placeholder="Provide address or use GPS" onChange={(e: any) => { setDetectedLocation(e.target.value); setDetectedLat(null); setDetectedLng(null); }} className="bg-slate-100 pl-10" />
+                    </div>
+                    <div className="flex gap-2">
                       {detectedLat && detectedLng && (
-                        <button type="button" onClick={openGoogleMaps} className="text-sm text-green-600 hover:text-green-700" title="Open in Google Maps">
-                          <MapPin className="h-4 w-4" /> {/* Reuse icon or use ExternalLink if imported */}
-                        </button>
+                        <Button type="button" variant="outline" size="icon" onClick={openGoogleMaps} className="h-10 w-10 text-green-600 hover:text-green-700 bg-green-50" title="Open in Google Maps">
+                          <MapPin className="h-4 w-4" />
+                        </Button>
                       )}
-                      <button type="button" onClick={fetchGeolocation} className="text-sm text-blue-600 hover:underline">Locate</button>
+                      <Button type="button" variant="outline" onClick={fetchGeolocation} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                        Locate Me
+                      </Button>
                     </div>
                   </div>
                 </div>

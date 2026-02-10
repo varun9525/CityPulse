@@ -1,0 +1,11 @@
+﻿Ultralytics YOLOv8.1.19 ≡ƒÜÇ Python-3.12.4 torch-2.2.0+cpu CPU (11th Gen Intel Core(TM) i5-11320H 3.20GHz)
+Model summary (fused): 169 layers, 3006428 parameters, 0 gradients, 8.1 GFLOPs
+WARNING ΓÜá∩╕Å Box and segment counts should be equal, but got len(segments) = 54, len(boxes) = 252. To resolve this only boxes will be used and all segments will be removed. To avoid this please supply either a detect or segment dataset, not a detect-segment mixed dataset.
+                   all        165        252      0.664      0.742       0.71      0.465
+               garbage        165         99      0.518      0.687      0.625       0.35
+               pothole        165         54      0.833          1      0.979      0.861
+           streetlight        165         87      0.831      0.977       0.97      0.533
+            water_leak        165         12      0.475      0.304      0.264      0.115
+Speed: 1.2ms preprocess, 69.6ms inference, 0.0ms loss, 0.4ms postprocess per image
+Results saved to [1mruns\detect\val7[0m
+≡ƒÆí Learn more at https://docs.ultralytics.com/modes/val

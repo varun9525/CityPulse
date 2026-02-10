@@ -1,0 +1,6 @@
+mAP50-95: 0.4648
+mAP50:    0.7095
+Precision: 0.6641
+Recall:    0.7420
+
+Class           Images     Instances  Precision  Recall     mAP50      mAP50-95  

@@ -91,7 +91,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
             {isSignUp ? 'Create Account' : 'Login'}
           </CardTitle>
           <CardDescription>
-            Access CityPulse AI Platform
+            Access UrbanSeva AI Platform
           </CardDescription>
         </CardHeader>
         <CardContent>

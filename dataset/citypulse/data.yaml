@@ -1,6 +1,6 @@
-train: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/train/images
-val: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/valid/images
-test: C:/Users/DELL/Desktop/IBM/CityPulse-main/dataset/citypulse/test/images
+train: c:/Users/admin/Desktop/CityPulse_2/CityPulse/dataset/citypulse/train/images
+val: c:/Users/admin/Desktop/CityPulse_2/CityPulse/dataset/citypulse/valid/images
+test: c:/Users/admin/Desktop/CityPulse_2/CityPulse/dataset/citypulse/test/images
 
 nc: 4
 names:

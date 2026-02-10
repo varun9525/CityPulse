@@ -27,6 +27,12 @@ def validate_model(model_path="runs/detect/train/weights/best.pt", data_path="da
         print(f"Recall:    {metrics.box.mr:.4f}")
         print("="*50)
         
+        with open("validation_results.txt", "w", encoding="utf-8") as f:
+            f.write(f"mAP50-95: {metrics.box.map:.4f}\n")
+            f.write(f"mAP50:    {metrics.box.map50:.4f}\n")
+            f.write(f"Precision: {metrics.box.mp:.4f}\n")
+            f.write(f"Recall:    {metrics.box.mr:.4f}\n")
+        
         return metrics
     except Exception as e:
         print(f"Validation failed: {e}")
